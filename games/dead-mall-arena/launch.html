@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dead Mall Arena</title>
+<style>
+  :root { --ink:#f3f0ff; --dim:#a9a2c4; --edge:rgba(255,120,220,.18); --neon:#ff4fd8; --neon2:#4ff0ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; color:var(--ink);
+    font:15px/1.45 system-ui, "DejaVu Sans", sans-serif;
+    background: radial-gradient(ellipse at 50% 120%, #3a1240 0%, #160f2a 45%, #07060d 100%); }
+  .card { width:min(580px, 92vw); padding:28px; border-radius:12px; background:rgba(14,10,28,.68); border:1px solid var(--edge); }
+  h1 { margin:0; font:900 40px/1.05 "DejaVu Sans", system-ui, sans-serif; letter-spacing:-1px; }
+  h1 span { color:var(--neon); text-shadow:0 0 18px rgba(255,79,216,.55); }
+  p { color:var(--dim); margin:8px 0 0; }
+  h2 { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin:24px 0 8px; font-weight:600; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  button { padding:11px 16px; border:0; border-radius:9px; cursor:pointer; font-weight:800; font-size:15px;
+    background:linear-gradient(180deg,#ff7be4,#d23bb8); color:#1d0620; }
+  button.alt { background:rgba(255,255,255,.08); color:var(--ink); border:1px solid var(--edge); font-weight:600; }
+  input { flex:1; min-width:180px; padding:11px 12px; border-radius:8px; border:1px solid var(--edge); background:rgba(255,255,255,.06); color:var(--ink); font-size:15px; }
+  .status { display:inline-flex; align-items:center; gap:7px; font-size:13.5px; color:var(--dim); }
+  .dot { width:10px; height:10px; border-radius:50%; background:#5d6b80; }
+  .dot.on { background:#5cd67a; box-shadow:0 0 8px #5cd67a; }
+  code { background:rgba(255,255,255,.08); padding:1px 6px; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Dead Mall <span>Arena</span></h1>
+  <p>LAN Edition with Pi 500 graphics. Fight the aliens through the whole two-floor mall, alone or with everyone on your Wi-Fi (the AMD 395 PC can join the same game).</p>
+
+  <h2>Play or host on this Pi</h2>
+  <p>Double-click <b>Dead Mall Arena</b> on the Desktop (added by Set Up My Apps). It starts the game server and opens the game. Its window shows the address friends type in.</p>
+  <div class="row" style="margin-top:10px">
+    <button id="play">Play on this Pi</button>
+    <button class="alt" id="recheck">Check again</button>
+    <span class="status"><span class="dot" id="dot"></span><span id="st">Checking…</span></span>
+  </div>
+
+  <h2>Join a game hosted on another computer</h2>
+  <div class="row">
+    <input id="addr" placeholder="Host address, e.g. 192.168.1.20" autocomplete="off">
+    <button id="join">Join</button>
+  </div>
+  <p style="font-size:13px">If the server says it moved to another port (like 8091), type <code>address:8091</code> under Join.<br>
+  On the Pi, Chromium needs <i>Use graphics acceleration when available</i> switched on.<br>
+  No icon? In a Terminal: <code>sh ~/Desktop/"My Apps"/games/dead-mall-arena/start-pi.sh</code></p>
+</div>
+<script>
+const PORT = 8090;
+const $ = (id) => document.getElementById(id);
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+let found = 0;
+async function check() {
+  $('st').textContent = 'Checking…';
+  for (let p = PORT; p < PORT + 20; p++) {
+    const ok = await new Promise((res) => {
+      const s = document.createElement('script');
+      const t = setTimeout(() => { s.remove(); res(false); }, 1200);
+      s.onload = () => { clearTimeout(t); s.remove(); res(!!window.DMA_BUILD); };
+      s.onerror = () => { clearTimeout(t); s.remove(); res(false); };
+      window.DMA_BUILD = undefined;
+      s.src = `http://localhost:${p}/config.js?${Date.now()}`;
+      document.head.appendChild(s);
+    });
+    if (ok) { found = p; $('dot').classList.add('on'); $('st').textContent = `Server is running on this Pi (port ${p})`; return; }
+  }
+  found = 0;
+  $('dot').classList.remove('on'); $('st').textContent = 'Server not running here yet';
+}
+$('play').onclick = () => {
+  if (found) { location.href = `http://localhost:${found}/`; return; }
+  $('st').textContent = 'Start it with the Dead Mall Arena icon on the Desktop first';
+};
+$('recheck').onclick = check;
+$('addr').value = store('dma.host') || '';
+function join() {
+  let a = $('addr').value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  if (!a) { $('addr').focus(); return; }
+  store('dma.host', a);
+  if (!/:\d+$/.test(a)) a += ':' + PORT;
+  location.href = `http://${a}/`;
+}
+$('join').onclick = join;
+$('addr').addEventListener('keydown', (e) => { if (e.key === 'Enter') join(); });
+check();
+</script>
+</body>
+</html>

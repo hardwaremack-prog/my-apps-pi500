@@ -1,0 +1,13 @@
+[Unit]
+Description=RPi500 fallback Wi-Fi hotspot (RPI500-OPEN) when there's no network at boot
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rpi500-fallback-ap
+RemainAfterExit=yes
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

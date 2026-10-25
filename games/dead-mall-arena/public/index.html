@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dead Mall Arena — LAN</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --bg:#0a0d0f;
+    --accent:#ff8a3d;
+    --accent2:#3dd6ff;
+    --danger:#ff3b3b;
+    --ok:#37d67a;
+    --shield:#4fa8ff;
+    --text:#e8ecef;
+    --dim:#7c8b93;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:'JetBrains Mono', monospace; color:var(--text);}
+  canvas{display:block; width:100%; height:100%;}
+
+  .corner{position:absolute; width:16px; height:16px; border-color:var(--accent); border-style:solid; opacity:.85;}
+  .cTL{top:-1px; left:-1px; border-width:2px 0 0 2px;}
+  .cTR{top:-1px; right:-1px; border-width:2px 2px 0 0;}
+  .cBL{bottom:-1px; left:-1px; border-width:0 0 2px 2px;}
+  .cBR{bottom:-1px; right:-1px; border-width:0 2px 2px 0;}
+
+  #startScreen{
+    position:fixed; inset:0; z-index:50;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at center, #14150f 0%, #050708 100%);
+  }
+  #startPanel{
+    position:relative; width:min(480px, 90vw); padding:36px 34px 30px;
+    background:linear-gradient(180deg, rgba(16,22,26,.9), rgba(10,13,15,.9));
+    border:1px solid rgba(255,138,61,.35);
+  }
+  #startPanel h1{font-family:'Orbitron', sans-serif; font-weight:900; font-size:28px; letter-spacing:3px; color:var(--text);}
+  #startPanel h1 span{color:var(--accent);}
+  #startPanel .sub{color:var(--dim); font-size:12px; letter-spacing:2px; margin-top:6px; text-transform:uppercase;}
+  #startPanel label{display:block; margin-top:24px; font-size:11px; letter-spacing:2px; color:var(--accent2); text-transform:uppercase;}
+  #nameInput{width:100%; margin-top:8px; padding:12px 14px; background:#0d1114; border:1px solid #233036; color:var(--text); font-family:'JetBrains Mono', monospace; font-size:15px; outline:none;}
+  #nameInput:focus{border-color:var(--accent);}
+  #playBtn{margin-top:26px; width:100%; padding:14px; background:var(--accent); border:none; color:#0a0d0f; font-family:'Orbitron', sans-serif; font-weight:700; letter-spacing:3px; font-size:14px; cursor:pointer; text-transform:uppercase;}
+  #playBtn:hover{background:#ffa563;}
+  #briefing{margin-top:20px; font-size:11.5px; line-height:1.85; color:var(--dim);}
+  #briefing b{color:var(--text);}
+  #mpStatus{margin-top:14px; font-size:11px; color:var(--dim); letter-spacing:1px;}
+  #mpStatus.on{color:var(--ok);}
+
+  #hud{position:fixed; inset:0; z-index:20; pointer-events:none; display:none;}
+  #crosshair{position:absolute; top:50%; left:50%; width:20px; height:20px; transform:translate(-50%,-50%);}
+  #crosshair:before, #crosshair:after{content:""; position:absolute; background:var(--accent2);}
+  #crosshair:before{left:9px; top:0; width:2px; height:20px;}
+  #crosshair:after{top:9px; left:0; width:20px; height:2px;}
+  #hitmarker{position:absolute; top:50%; left:50%; width:26px; height:26px; transform:translate(-50%,-50%) rotate(45deg); opacity:0; transition:opacity .12s;}
+  #hitmarker:before,#hitmarker:after{content:""; position:absolute; background:var(--danger);}
+  #hitmarker:before{left:11px; top:0; width:4px; height:26px;}
+  #hitmarker:after{top:11px; left:0; width:26px; height:4px;}
+
+  #dmgFlash{position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(255,59,59,0) 40%, rgba(255,59,59,.35) 100%); opacity:0; transition:opacity .15s;}
+  #flickerOverlay{position:absolute; inset:0; background:#000; opacity:0; pointer-events:none;}
+  #shieldFlash{position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(79,168,255,0) 40%, rgba(79,168,255,.4) 100%); opacity:0; transition:opacity .15s;}
+
+  #bottomLeft{position:absolute; bottom:22px; left:22px; width:230px;}
+  #healthLabel{font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:6px;}
+  #healthBarWrap{position:relative; height:20px; background:#0d1114; border:1px solid #233036; padding:2px;}
+  #healthBarFill{height:100%; width:100%; background:linear-gradient(90deg, var(--ok), #7ee89f); transition:width .15s;}
+  #healthNum{position:absolute; right:8px; top:1px; font-size:12px; font-weight:600; color:#06110a; mix-blend-mode:screen;}
+
+  #weaponPanel{position:absolute; bottom:70px; left:22px; display:flex; flex-direction:column; gap:6px;}
+  #weaponName{font-family:'Orbitron', sans-serif; font-size:12px; letter-spacing:2px; color:var(--accent); text-transform:uppercase;}
+  #ammoRow{display:flex; gap:6px; align-items:center; height:26px;}
+  .shell{width:14px; height:26px; border-radius:3px 3px 1px 1px; background:linear-gradient(180deg,#c9622b,#7a3a15 70%, #2b2b2b 70%); border:1px solid #4a2510; opacity:1; transition:opacity .2s;}
+  .shell.spent{opacity:.15;}
+  .infinity{font-size:18px; color:var(--accent2); font-weight:700;}
+  #reloadMsg{position:absolute; top:56%; left:50%; transform:translate(-50%,0); font-family:'Orbitron',sans-serif; font-size:13px; letter-spacing:3px; color:var(--accent); opacity:0; transition:opacity .15s; text-transform:uppercase;}
+
+  #statusEffects{position:absolute; bottom:118px; left:22px; display:flex; flex-direction:column-reverse; gap:4px; font-size:10.5px;}
+  .statusChip{padding:4px 9px; background:rgba(10,13,15,.65); border-left:3px solid var(--accent2); white-space:nowrap;}
+  .statusChip.shield{border-left-color:var(--shield); color:var(--shield);}
+  .statusChip.speed{border-left-color:var(--accent2); color:var(--accent2);}
+  .statusChip.invis{border-left-color:#ba7bff; color:#ba7bff;}
+
+  #topLeft{position:absolute; top:22px; left:22px; padding:10px 16px; background:rgba(10,13,15,.55); border:1px solid rgba(255,138,61,.3); font-size:12px; letter-spacing:1px;}
+  #topLeft .row{display:flex; gap:18px;}
+  #topLeft .k{color:var(--dim); text-transform:uppercase; font-size:10px;}
+  #topLeft .v{color:var(--accent2); font-weight:600; font-size:16px; font-family:'Orbitron',sans-serif;}
+  #playersPanel{position:absolute; top:100px; left:22px; padding:10px 14px; background:rgba(10,13,15,.55); border:1px solid rgba(255,138,61,.3); font-size:12px; min-width:150px; max-width:220px;}
+  #playersPanelTitle{color:var(--dim); text-transform:uppercase; font-size:10px; letter-spacing:1px; margin-bottom:6px;}
+  #playersPanelList{display:flex; flex-direction:column; gap:4px;}
+  .playerRow{display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px;}
+  .playerRow .pname{color:#e8e2d0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;}
+  .playerRow .phealth{color:var(--accent2); font-family:'Orbitron',sans-serif; font-weight:600;}
+  .playerRow .plink{font-size:9px; color:#5ab0ff; margin-left:4px;}
+  .playerRow.dead .pname{color:#7c5050; text-decoration:line-through;}
+
+  #killfeed{position:absolute; top:22px; right:22px; width:300px; display:flex; flex-direction:column; gap:6px; align-items:flex-end;}
+  .feedItem{padding:7px 12px; background:rgba(10,13,15,.6); border-left:3px solid var(--accent); font-size:12px; animation:feedIn .25s ease-out; max-width:100%;}
+  .feedItem.death{border-left-color:var(--danger);}
+  @keyframes feedIn{from{opacity:0; transform:translateX(20px);} to{opacity:1; transform:translateX(0);}}
+
+  #centerMsg{position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); text-align:center; font-family:'Orbitron',sans-serif; font-size:26px; letter-spacing:2px; color:var(--danger); opacity:0; transition:opacity .2s;}
+  #centerMsg .sub{display:block; margin-top:10px; font-size:13px; font-family:'JetBrains Mono',monospace; color:var(--text); letter-spacing:1px;}
+
+  #playersOnline{position:absolute; bottom:24px; right:22px; font-size:11px; color:var(--dim); letter-spacing:1px; text-align:right;}
+  #playersOnline b{color:var(--accent2);}
+
+  #controls{position:absolute; bottom:5px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--dim); letter-spacing:1px; white-space:nowrap; opacity:.8;}
+
+  #chatLog{position:absolute; bottom:190px; left:22px; width:340px; display:flex; flex-direction:column; gap:5px; pointer-events:none;}
+  .chatMsg{padding:6px 10px; background:rgba(10,13,15,.6); border-left:3px solid var(--accent2); font-size:11.5px; line-height:1.4; word-wrap:break-word; animation:feedIn .2s ease-out;}
+  .chatMsg b{color:var(--accent2);}
+  #chatInputWrap{position:absolute; bottom:150px; left:22px; width:340px; display:none; pointer-events:auto;}
+  #chatInputWrap.open{display:block;}
+  #chatInput{width:100%; padding:9px 12px; background:rgba(10,13,15,.9); border:1px solid var(--accent2); color:var(--text); font-family:'JetBrains Mono', monospace; font-size:12.5px; outline:none;}
+
+  #storyText{position:absolute; top:22%; left:50%; transform:translateX(-50%); width:580px; max-width:85vw; text-align:center; font-style:italic; font-size:17px; line-height:1.5; color:#f0dcae; background:rgba(20,14,8,.88); padding:18px 26px; border:1px solid rgba(216,176,96,.5); box-shadow:0 0 30px rgba(0,0,0,.6); opacity:0; transition:opacity .4s;}
+  #storyText.show{opacity:1;}
+  #grenadeHud{position:absolute; bottom:70px; left:50%; transform:translateX(-50%); font-size:11px; color:var(--accent); letter-spacing:1px; text-align:center; opacity:0.85;}
+  #drunkMeterWrap{position:absolute; top:70px; left:50%; transform:translateX(-50%); width:180px; text-align:center; display:none;}
+  #drunkMeterWrap.show{display:block;}
+  #drunkMeterLabel{font-size:9.5px; color:#ff5a8a; letter-spacing:2px; margin-bottom:3px;}
+  #drunkMeterTrack{width:100%; height:7px; background:rgba(255,255,255,.1); border:1px solid rgba(255,90,138,.4);}
+  #drunkMeterFill{height:100%; width:0%; background:linear-gradient(90deg,#ff5a8a,#ff2a5a); transition:width .3s;}
+
+  #guideToggle{margin-top:14px; width:100%; padding:9px; background:transparent; border:1px solid rgba(61,214,255,.4); color:var(--accent2); font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:2px; cursor:pointer; text-transform:uppercase;}
+  #guideToggle:hover{background:rgba(61,214,255,.08);}
+  #guidePanel{display:none; margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,.08);}
+  #guidePanel.open{display:block;}
+  #guidePanel h3{font-family:'Orbitron',sans-serif; font-size:11px; letter-spacing:2px; color:var(--accent); text-transform:uppercase; margin-bottom:8px;}
+  #guidePanel h3.mp{margin-top:16px;}
+  .legendRow{display:flex; align-items:center; gap:9px; font-size:11px; color:var(--dim); margin-bottom:6px; line-height:1.4;}
+  .legendDot{width:12px; height:12px; border-radius:3px; flex-shrink:0; margin-top:1px;}
+  .legendRow b{color:var(--text);}
+  #guidePanel .mpText{font-size:11px; color:var(--dim); line-height:1.85;}
+
+  @font-face{font-family:'Orbitron'; font-weight:500; src:url(fonts/orbitron-latin-500-normal.woff2) format('woff2');}
+  @font-face{font-family:'Orbitron'; font-weight:700; src:url(fonts/orbitron-latin-700-normal.woff2) format('woff2');}
+  @font-face{font-family:'Orbitron'; font-weight:900; src:url(fonts/orbitron-latin-900-normal.woff2) format('woff2');}
+  @font-face{font-family:'JetBrains Mono'; font-weight:400; src:url(fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');}
+  @font-face{font-family:'JetBrains Mono'; font-weight:600; src:url(fonts/jetbrains-mono-latin-600-normal.woff2) format('woff2');}
+  #qualitySelect{width:100%; margin-top:8px; padding:11px 12px; background:#0d1114; border:1px solid #233036; color:var(--text); font-family:'JetBrains Mono', monospace; font-size:13px; outline:none;}
+  #qualitySelect:focus{border-color:var(--accent);}
+  #gpuName{margin-top:6px; font-size:10px; color:var(--dim); letter-spacing:.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  #serverInfo{margin-top:6px; font-size:11px; color:var(--dim); line-height:1.6;}
+  #serverInfo b{color:var(--accent2); font-weight:600;}
+  .playerRow .pk{color:var(--accent); font-family:'Orbitron',sans-serif; font-size:11px; margin-left:auto; margin-right:8px;}
+  #vignette{position:absolute; inset:0; background:radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,.42) 100%);}
+  #loading{position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:#050708; color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:2px; text-transform:uppercase;}
+  #loading b{color:var(--accent); font-family:'Orbitron',sans-serif; letter-spacing:3px;}
+  #startPanel{max-height:96vh; overflow:auto;}
+</style>
+<script src="config.js"></script>
+<script>
+// show problems on the loading screen instead of hanging on "powering up the mall..."
+(function(){
+  function show(msg){
+    var el = document.getElementById('loading');
+    if(!el){ return; }
+    el.innerHTML = '<div style="max-width:560px;line-height:1.7;text-transform:none;letter-spacing:.5px"><b>DEAD MALL ARENA</b><br><br>' + msg + '</div>';
+  }
+  window.__dmaShowError = show;
+  if(location.protocol === 'file:'){
+    window.addEventListener('DOMContentLoaded', function(){ show('This page has to be opened through the game server, not as a file.<br><br>On a Raspberry Pi run <b>start-pi.sh</b>; on Windows run <b>start-windows.bat</b>. They open the right address for you (like http://localhost:8090).'); });
+    return;
+  }
+  var t = document.createElement('canvas');
+  var gl = null; try{ gl = t.getContext('webgl2') || t.getContext('webgl'); }catch(e){}
+  if(!gl){
+    window.addEventListener('DOMContentLoaded', function(){ show('This browser has 3D graphics (WebGL) turned off, so the game can\'t start.<br><br>In Chromium open <b>chrome://settings/system</b> and turn on <b>Use graphics acceleration when available</b>, then relaunch Chromium. On a Pi also check <b>chrome://gpu</b> says WebGL is "Hardware accelerated".'); });
+  }
+  window.addEventListener('error', function(e){ if(!window.__dma) show('Something went wrong while loading:<br><br><span style="color:#ff8a3d">' + String(e.message || e.error || 'unknown error').replace(/</g,'&lt;') + '</span><br><br>Take a photo of this screen and send it over.'); });
+  window.addEventListener('unhandledrejection', function(e){ if(!window.__dma) show('Something went wrong while loading:<br><br><span style="color:#ff8a3d">' + String((e.reason && e.reason.message) || e.reason).replace(/</g,'&lt;') + '</span><br><br>Take a photo of this screen and send it over.'); });
+  setTimeout(function(){ if(!window.__dma) show('Still loading after 45 seconds. The browser may be very slow or stuck.<br><br>Try refreshing (F5). If it keeps happening, take a photo of this screen.'); }, 45000);
+})();
+</script>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }
+</script>
+</head>
+<body>
+<div id="loading"><div><b>DEAD MALL ARENA</b><br><br>powering up the mall...</div></div>
+
+<div id="startScreen">
+  <div id="startPanel">
+    <div class="corner cTL"></div><div class="corner cTR"></div><div class="corner cBL"></div><div class="corner cBR"></div>
+    <h1>ARENA <span>// DEAD MALL</span></h1>
+    <div class="sub">hostile takeover — retail sector 7</div>
+    <label>Callsign</label>
+    <input id="nameInput" maxlength="16" placeholder="Enter your callsign" autocomplete="off">
+    <label>Graphics</label>
+    <select id="qualitySelect"></select>
+    <div id="gpuName"></div>
+    <button id="playBtn">Deploy</button>
+    <div id="mpStatus">checking LAN server...</div>
+    <div id="serverInfo"></div>
+    <div id="briefing">
+      <b>WASD</b> move &nbsp; <b>MOUSE</b> look &nbsp; <b>HOLD CLICK</b> fire &nbsp; <b>ESC</b> release cursor<br>
+      Everyone spawns with a different weapon — kill someone and you take theirs. Med-kits, weapon crates, speed, shields and cloaking devices spawn around the mall, and an alien squad patrols the halls. On your home network everyone shares the same mall: same aliens, same pickups, live 20x a second.
+    </div>
+    <button id="guideToggle" type="button">Power-Ups &amp; Multiplayer Guide ▾</button>
+    <div id="guidePanel">
+      <h3>Power-Ups</h3>
+      <div class="legendRow"><div class="legendDot" style="background:#37d67a;"></div><div><b>Med-Kit</b> — restores 40 health.</div></div>
+      <div class="legendRow"><div class="legendDot" style="background:#ffb347;"></div><div><b>Weapon Crate</b> — swaps you to a random weapon.</div></div>
+      <div class="legendRow"><div class="legendDot" style="background:#3dd6ff;"></div><div><b>Adrenaline</b> — 1.6x move speed for 8 seconds.</div></div>
+      <div class="legendRow"><div class="legendDot" style="background:#4fa8ff;"></div><div><b>Shield Cell</b> — adds 50 shield, absorbs damage before health.</div></div>
+      <div class="legendRow"><div class="legendDot" style="background:#ba7bff;"></div><div><b>Cloak</b> — turns you nearly invisible and hides you from bots for 8 seconds.</div></div>
+      <div class="legendRow"><div class="legendDot" style="background:#e8c473;"></div><div><b>Pizza slice</b> (Starlite Pizza Cafe) — +25 health, or +5 per pizza off the conveyor belt.</div></div>
+      <div class="legendRow"><div class="legendDot" style="background:#d81e2c;"></div><div><b>Cola / Mountain Dew</b> (Starlite Pizza Cafe) — same speed boost as Adrenaline.</div></div>
+      <h3 class="mp">LAN Multiplayer</h3>
+      <div class="mpText">
+        One computer runs the little server (<b>start-windows.bat</b> on the AMD 395, or <b>start-pi.sh</b> on a Pi). Everyone else on the same Wi-Fi or wired network opens the address it prints, like <b>http://192.168.1.20:8090</b>, in Chrome or Chromium. No internet needed. The first player in becomes the <b>host</b>: their browser runs the alien squad and the power-ups for everybody, and if they leave the next player takes over automatically. Press <b>T</b> to chat. Each player picks their own graphics level, so a Pi 500 and the AMD 395 can play in the same mall.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="hud">
+  <div id="vignette"></div>
+  <div id="dmgFlash"></div>
+  <div id="flickerOverlay"></div>
+  <div id="shieldFlash"></div>
+  <div id="crosshair"></div>
+  <div id="hitmarker"></div>
+  <div id="bottomLeft">
+    <div id="healthLabel">Integrity</div>
+    <div id="healthBarWrap"><div id="healthBarFill"></div><div id="healthNum">100</div></div>
+  </div>
+  <div id="weaponPanel">
+    <div id="weaponName">Sawed-Off</div>
+    <div id="ammoRow"></div>
+  </div>
+  <div id="statusEffects"></div>
+  <div id="topLeft">
+    <div class="row">
+      <div><div class="k">Kills</div><div class="v" id="killCount">0</div></div>
+      <div><div class="k">Deaths</div><div class="v" id="deathCount">0</div></div>
+    </div>
+  </div>
+  <div id="killfeed"></div>
+  <div id="centerMsg">ELIMINATED<span class="sub">Redeploying...</span></div>
+  <div id="playersOnline">operators online: <b id="onlineCount">1</b> · <span id="partyLabel">PUBLIC ARENA</span> · <span id="rtcStatus"></span></div>
+  <div id="playersPanel"><div id="playersPanelTitle">OPERATORS</div><div id="playersPanelList"></div></div>
+  <div id="reloadMsg">RELOADING</div>
+  <div id="chatLog"></div>
+  <div id="chatInputWrap"><input id="chatInput" maxlength="140" placeholder="Say something... (Enter to send, Esc to cancel)" autocomplete="off"></div>
+  <div id="storyText"></div>
+  <div id="grenadeHud">GRENADES: <b id="grenadeCountEl">0</b> — G to throw</div>
+  <div id="drunkMeterWrap"><div id="drunkMeterLabel">INTOXICATION</div><div id="drunkMeterTrack"><div id="drunkMeterFill"></div></div></div>
+  <div id="controls">WASD MOVE · MOUSE LOOK · HOLD CLICK FIRE · R RELOAD · T CHAT · E INTERACT · Y/N ANSWER · G THROW · M MUSIC · F FPS · ESC RELEASE CURSOR</div>
+</div>
+
+<script type="module" src="boot.js"></script>
+</body>
+</html>
