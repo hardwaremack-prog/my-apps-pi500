@@ -11,6 +11,7 @@ A clickable menu of all my apps and games for the Pi 500, with server lights at 
 - **RPi500+ Task Manager**: Windows-style Task Manager (Ctrl+Shift+Esc) with an Update everything button
 - **Pip**: offline voice assistant for your headset
 - **Overdrive**: show off every part of the Pi 500 and get a score
+- **RAID Forge**: point-and-click RAID 0/1/5/6/10 on USB 3 drives or a drive HAT, with a safe demo mode
 - **PiDroid Setup**: get Waydroid (Android) and Roblox running, with a fix button for every check
 - **Pi 500 games**: Fernlight Hollow, Fernlight Frostfall and Dead Mall Arena LAN Edition with Pi graphics
 
