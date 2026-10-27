@@ -90,6 +90,17 @@ OVERDRIVE (Pi 500 hardware showcase)
   icon on the Desktop (menu: System Tools) or its tile. Say yes when
   Set Up My Apps.sh asks about the LEDs to get the light show.
 
+PIDROID SETUP (Android apps and Roblox with Waydroid)
+  Checks everything Android needs on the Pi 500 - 4K kernel, PSI,
+  binder, the Wayland desktop, Waydroid itself and its network - with
+  a fix button next to anything red. Then it helps you register the Pi
+  with Google so the Play Store signs in, install Roblox, tune it so
+  the mouse works as touch, and launch it. Start it with the PiDroid
+  Setup icon on the Desktop (menu: System Tools) or its tile. Reboot
+  when its yellow banner asks. Roblox's anti-cheat may refuse to run
+  under Waydroid; try the Phone identity button if it closes at once.
+  Also at github.com/hardwaremack-prog/pidroid-setup
+
 RPI500+ TASK MANAGER (Windows-style Task Manager)
   Gauges for CPU, clock speed, temperature, memory and storage, plus power draw,
   every running program with End task (Del) and Force kill, network

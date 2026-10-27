@@ -161,6 +161,28 @@ Categories=System;Utility;"
   fi
 fi
 
+# 3c1b. PiDroid Setup (Waydroid + Roblox; opens in its own window)
+DR="$DEST/apps/pidroid"
+if [ -f "$DR/pidroid.py" ]; then
+  chmod +x "$DR/pidroid.py" "$DR/install.sh" 2>/dev/null || true
+  python3 -c 'import gi; gi.require_version("Gtk","3.0")' 2>/dev/null \
+    || echo "  Note: PiDroid Setup needs GTK for Python:  sudo apt install python3-gi gir1.2-gtk-3.0"
+  DRL="[Desktop Entry]
+Type=Application
+Name=PiDroid Setup
+Comment=Set up Waydroid (Android) and Roblox
+Exec=python3 \"$DR/pidroid.py\"
+Path=$DR
+Icon=$DR/pidroid.svg
+Terminal=false
+Categories=System;Settings;"
+  printf '%s\n' "$DRL" > "$HOME/.local/share/applications/pidroid.desktop"
+  printf '%s\n' "$DRL" > "$DESK/PiDroid Setup.desktop"
+  chmod +x "$DESK/PiDroid Setup.desktop" "$HOME/.local/share/applications/pidroid.desktop"
+  gio set "$DESK/PiDroid Setup.desktop" metadata::trusted true 2>/dev/null || true
+  rm -f "$DESK/pidroid.desktop"   # the one PiDroid's own installer makes
+fi
+
 # 3c2. PON Lab meter outage tester (opens in SIMULATION mode here; for a real relay bench run its install.sh)
 PL="$DEST/apps/ponlab"
 if [ -f "$PL/app.py" ]; then
@@ -425,7 +447,7 @@ done
 
 echo
 echo "  All set! Double-click 'My Apps' on the Desktop,"
-echo "  (Overdrive, the Task Manager, Pip, Dead Mall Arena, NetPulse, NetSentry, Halo Studio, PiDirStat, PON Lab, PON Fleet, WiFi Share, Blueprint Wiki, PodDeck, PiMesh, Frostfall Cabins Server and the Snipping Tool have their own icons too),"
+echo "  (Overdrive, PiDroid Setup, the Task Manager, Pip, Dead Mall Arena, NetPulse, NetSentry, Halo Studio, PiDirStat, PON Lab, PON Fleet, WiFi Share, Blueprint Wiki, PodDeck, PiMesh, Frostfall Cabins Server and the Snipping Tool have their own icons too),"
 echo "  or find it in the Raspberry Pi menu under Games."
 echo "  The server lights (SSH, VNC, The Shelf, PiMesh and more) are at the top of the menu."
 [ -n "$NEED_REBOOT" ] && echo "  Restart the Pi once so the Task Manager starts cleanly:  sudo reboot"

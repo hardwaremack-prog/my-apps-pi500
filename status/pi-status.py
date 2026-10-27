@@ -57,6 +57,10 @@ KNOWN = [
     dict(id="rdp", name="Remote Desktop", kind="tcp", ports=[3389], note="xrdp: connect from Windows Remote Desktop."),
     dict(id="samba", name="File sharing", kind="tcp", ports=[445], note="Samba: this Pi's shared folders."),
 ]
+# desktop programs the menu tiles can start, but that have no server light
+LAUNCH_ONLY = [
+    dict(id="pidroid", launch="pidroid"),
+]
 SKIP_PORTS = {PORT, 8399, 53, 111, 631, 4713}   # this helper, DNS, rpcbind, printer queue, sound server
 
 state = {"servers": [], "host": {}, "watch": [], "at": None, "scans": 0}
@@ -501,7 +505,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             body = {}
         if u.path == "/start":
-            k = next((k for k in KNOWN if k["id"] == body.get("id") and k.get("launch")), None)
+            k = next((k for k in KNOWN + LAUNCH_ONLY if k["id"] == body.get("id") and k.get("launch")), None)
             if not k:
                 return self._send(400, {"ok": False, "msg": "That one can't be started from here."})
             ok, msg = launch(k["launch"])
