@@ -432,6 +432,29 @@ if [ -f "$PIPSRC/server.py" ]; then
   fi
 fi
 
+# 3h2. Let the menu's Stop buttons stop My Apps system services (PiMesh, Task Manager web page, PON Lab,
+#      SSH, VNC, ...) without asking for a password every time. Only stop/start/restart, only these
+#      services, only for you. Asks for your password once.
+if command -v pkaction >/dev/null 2>&1 && [ -d /etc/polkit-1 ]; then
+  RULE="/etc/polkit-1/rules.d/49-myapps-stop.rules"
+  RULETXT="// Made by Set Up My Apps.sh: lets $USER stop and start these services from the My Apps menu.
+polkit.addRule(function(action, subject) {
+  if (action.id == \"org.freedesktop.systemd1.manage-units\" && subject.user == \"$USER\") {
+    var units = [\"pimesh.service\", \"rpi500-web.service\", \"ponlab.service\", \"ponfleet.service\",
+                 \"pironman5.service\", \"pironman-pilot.service\", \"ssh.service\", \"ssh.socket\", \"sshd.service\", \"wayvnc.service\",
+                 \"wayvnc-control.service\", \"vncserver-x11-serviced.service\", \"vncserver-virtuald.service\"];
+    var verbs = [\"start\", \"stop\", \"restart\"];
+    if (units.indexOf(action.lookup(\"unit\")) >= 0 && verbs.indexOf(action.lookup(\"verb\")) >= 0)
+      return polkit.Result.YES;
+  }
+});"
+  if [ "$(cat "$RULE" 2>/dev/null)" != "$RULETXT" ]; then
+    echo "  The Stop buttons need your password once to stop system services like PiMesh:"
+    printf '%s\n' "$RULETXT" | sudo tee "$RULE" >/dev/null && sudo chmod 644 "$RULE" \
+      || echo "  Note: skipped. The Stop buttons still work for apps you started yourself."
+  fi
+fi
+
 # 3i. Server lights for the menu (SSH, VNC, The Shelf, PiMesh, PodDeck, ... like Command Center on Windows).
 #     A tiny Python helper that starts with the Pi and only listens on this Pi (127.0.0.1:8399).
 ST="$DEST/status"

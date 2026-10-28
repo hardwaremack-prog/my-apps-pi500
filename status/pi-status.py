@@ -32,9 +32,9 @@ KNOWN = [
          note="See this Pi's screen from another computer (RealVNC or TigerVNC viewer)."),
     dict(id="shelf", name="The Shelf", title=r"shelf", ports=[8080, 8081, 8000], always=True,
          note="Your apps, files and AI tab."),
-    dict(id="pimesh", name="PiMesh", title=r"pimesh", ports=[8470], always=True,
+    dict(id="pimesh", name="PiMesh", title=r"pimesh", ports=[8470], always=True, unit="pimesh.service",
          note="All your Pis and their stats."),
-    dict(id="poddeck", name="PodDeck", title=r"poddeck", ports=[8070], always=True, launch="poddeck",
+    dict(id="poddeck", name="PodDeck", title=r"poddeck", ports=[8070], always=True, launch="poddeck", unit="user:poddeck.service",
          note="Podman containers."),
     dict(id="wiki", name="Blueprint Wiki", title=r"blueprint", ports=[8080, 8081, 8082, 8083], always=True,
          launch="blueprint-wiki", note="Projects, notes and diagrams."),
@@ -44,14 +44,19 @@ KNOWN = [
          note="AI image editor."),
     dict(id="pidirstat", name="PiDirStat", title=r"dirstat", ports=[8088, 8089, 8090, 9000], launch="pidirstat",
          note="What's filling the storage."),
-    dict(id="ponlab", name="PON Lab", title=r"pon lab", ports=[8080, 8081], launch="ponlab",
+    dict(id="ponlab", name="PON Lab", title=r"pon lab", ports=[8080, 8081], launch="ponlab", unit="ponlab.service",
          note="Meter outage tester."),
-    dict(id="ponfleet", name="PON Fleet", title=r"pon fleet", ports=[8090, 8091], launch="ponfleet",
+    dict(id="ponfleet", name="PON Fleet", title=r"pon fleet", ports=[8090, 8091], launch="ponfleet", unit="ponfleet.service",
          note="Controls many PON Lab Pis."),
     dict(id="overdrive", name="Overdrive", title=r"overdrive", ports=[8500, 8501, 8502], launch="overdrive",
          note="Pi 500 hardware showcase."),
-    dict(id="taskmgr", name="Task Manager web page", title=r"task manager", ports=[8090, 8091], launch="rpi500-taskmgr",
+    dict(id="taskmgr", name="Task Manager web page", title=r"task manager", ports=[8090, 8091], launch="rpi500-taskmgr", unit="rpi500-web.service",
          note="RPi500+ Task Manager for phones and PCs."),
+    dict(id="pilot", name="Pironman Pilot", title=r"pironman pilot", ports=[8765, 47821, 47822], unit="pironman-pilot.service",
+         note="Pironman 5 MAX case control."),
+    dict(id="pdash", name="Pironman dashboard", title=r"^\s*dashboard\s*$|pironman ?5", ports=[34001], unit="pironman5.service",
+         warn="SunFounder's case service: stopping it also stops the case fans, LEDs and OLED until restart.",
+         note="SunFounder's case dashboard."),
     dict(id="pip", name="Pip", title=r"\bpip\b", ports=[8765], launch="pip-voice",
          note="Offline voice chat."),
     dict(id="raidforge", name="RAID Forge", kind="launch", ports=[], launch="raidforge",
@@ -256,7 +261,7 @@ def scan():
         if kind == "web":
             p = k["_port"]
             up = p is not None
-            s = dict(id=k["id"], name=k["name"], note=k["note"], kind="web", up=up,
+            s = dict(id=k["id"], name=k["name"], note=k["note"], kind="web", up=up, unit=k.get("unit"), warn=k.get("warn"),
                      port=p or k["ports"][0], status=web[p][1] if up and p in web else 0,
                      title=web[p][2] if up and p in web else "", launch=k.get("launch"))
             if up:
@@ -328,8 +333,11 @@ def launch(desktop_id):
             break
     else:
         return False, "Run Set Up My Apps.sh first, so this app has its launcher."
+    scope = ["systemd-run", "--user", "--scope", "--quiet", "--collect"] if shutil.which("systemd-run") else []
     for cmd in (["gtk-launch", desktop_id], ["gio", "launch", os.path.join(d, desktop_id + ".desktop")]):
         if shutil.which(cmd[0]):
+            if scope and subprocess.run(scope + ["true"], capture_output=True, timeout=5).returncode == 0:
+                cmd = scope + cmd
             subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
             return True, "Starting..."
     return False, "Couldn't find gtk-launch. Start it from its Desktop icon instead."
@@ -410,6 +418,8 @@ def unit_of(pid):
         return None, None
     m = re.search(r"/user@\d+\.service/.*?([^/]+\.service)\s*$", cg, re.M)
     if m:
+        if m.group(1) == "myapps-status.service":
+            return None, None      # something this helper started: stop the program, not the helper
         return "user", m.group(1)
     m = re.search(r"/system\.slice/(?:.*/)?([^/]+\.service)\s*$", cg, re.M)
     if m:
@@ -418,17 +428,34 @@ def unit_of(pid):
 
 
 def as_root(cmd, timeout=120):
-    """Run a command as root: sudo with no password first, then the desktop's password box."""
+    """Run a command as root if sudo works without a password."""
     if shutil.which("sudo"):
         r = subprocess.run(["sudo", "-n"] + cmd, capture_output=True, text=True, timeout=30)
         if r.returncode == 0:
             return True
-    if shutil.which("pkexec"):
-        try:
-            return subprocess.run(["pkexec"] + cmd, capture_output=True, timeout=timeout).returncode == 0
-        except subprocess.TimeoutExpired:
-            return False
     return False
+
+
+NEEDS_SETUP = ("%s runs as a system service, so it needs your OK once. Run Set Up My Apps.sh again "
+               "(it asks for your password one time) and Stop works from then on.")
+
+
+def stop_unit(scope, unit, name):
+    """(ok, message-if-not-ok). System services: allowed by the My Apps polkit rule, else passwordless sudo."""
+    if scope == "user":
+        run(["systemctl", "--user", "stop", unit], timeout=30)
+        return True, ""
+    r = subprocess.run(["systemctl", "--no-ask-password", "stop", unit], capture_output=True, text=True, timeout=40)
+    if r.returncode == 0:
+        return True, ""
+    if shutil.which("sudo") and subprocess.run(["sudo", "-n", "systemctl", "stop", unit],
+                                               capture_output=True, timeout=40).returncode == 0:
+        return True, ""
+    return False, NEEDS_SETUP % name
+
+
+def unit_enabled(scope, unit):
+    return run(["systemctl"] + (["--user"] if scope == "user" else []) + ["is-enabled", unit]).strip() == "enabled"
 
 
 def still_listening(port, wait=5.0):
@@ -454,8 +481,9 @@ def stop_remote(kind, name):
                   and run(["systemctl", "--user", "is-active", u]).strip() == "active"]
     for u in user_units:
         run(["systemctl", "--user", "stop", u], timeout=20)
-    if units and not as_root(["systemctl", "stop"] + units):
-        return False, "Didn't get permission to turn off %s." % name
+    for u in units:
+        if not stop_unit("system", u, name)[0]:
+            return False, NEEDS_SETUP % name
     port = 22 if kind == "ssh" else next((q for q in range(5900, 5911) if q in listening()), 5900)
     if still_listening(port, 4):
         for pid, _ in port_pids(port):      # started some other way: stop the program itself
@@ -470,45 +498,50 @@ def stop_remote(kind, name):
     return True, "Turned off %s. It comes back when the Pi restarts (or click it to turn it on)." % name
 
 
-def stop_server(port, name, kind="web"):
+def stop_server(port, name, kind="web", known_unit=None):
     if kind in REMOTE_UNITS:
         return stop_remote(kind, name)
     if port == PORT or port in (22, 445, 139, 3389) or 5900 <= port <= 5910:
         return False, "That one can't be stopped from here."
     pids = port_pids(port)
-    if not pids:
-        return False, "Couldn't tell which program runs %s. Close its window, or restart the Pi." % name
-    progs = {p for _, p in pids}
-    if progs & CONTAINER_PROCS:
+    if any(pid == os.getpid() for pid, _ in pids):
+        return False, "That's the server lights helper itself."
+    if {p for _, p in pids} & CONTAINER_PROCS:
         return False, "%s runs in a container. Stop it in PodDeck." % name
-    notes, stopped_units = [], set()
+    # which systemd services own it? (a root service hides its program from us, so use the app's known service)
+    units, loose = [], []
     for pid, prog in pids:
         scope, unit = unit_of(pid)
+        if unit:
+            if (scope, unit) not in units:
+                units.append((scope, unit))
+        else:
+            loose.append(pid)
+    if not pids and known_unit:
+        scope, unit = ("user", known_unit[5:]) if known_unit.startswith("user:") else ("system", known_unit)
+        if run(["systemctl"] + (["--user"] if scope == "user" else []) + ["is-active", unit]).strip() == "active":
+            units.append((scope, unit))
+    if not pids and not units:
+        return False, NEEDS_SETUP % name if port_owned_by_root(port) else \
+            "Couldn't tell which program runs %s. Close its window, or restart the Pi." % name
+    boot = False
+    for scope, unit in units:
         if unit == "myapps-status.service":
             return False, "That's the server lights helper itself."
-        if unit and unit not in stopped_units:
-            stopped_units.add(unit)
-            if scope == "user":
-                run(["systemctl", "--user", "stop", unit], timeout=20)
-                if run(["systemctl", "--user", "is-enabled", unit]).strip() == "enabled":
-                    notes.append("boot")
-            else:
-                if not as_root(["systemctl", "stop", unit]):
-                    return False, "Didn't get permission to stop %s." % name
-                if run(["systemctl", "is-enabled", unit]).strip() == "enabled":
-                    notes.append("boot")
-            continue
-        if unit:
-            continue
+        ok, why = stop_unit(scope, unit, name)
+        if not ok:
+            return False, why
+        boot = boot or unit_enabled(scope, unit)
+    for pid in loose:
         try:
             os.kill(pid, signal.SIGTERM)
         except PermissionError:
             if not as_root(["kill", "-TERM", str(pid)]):
-                return False, "Didn't get permission to stop %s." % name
+                return False, "%s was started as root (with sudo). Close it from where it was started, or restart the Pi." % name
         except ProcessLookupError:
             pass
     if still_listening(port):
-        for pid, _ in pids:            # it didn't close nicely: make it
+        for pid in loose:              # it didn't close nicely: make it
             try:
                 os.kill(pid, signal.SIGKILL)
             except PermissionError:
@@ -519,9 +552,23 @@ def stop_server(port, name, kind="web"):
             return False, "%s is still running. Try again, or restart the Pi." % name
     _titles.pop(port, None)
     msg = "Stopped %s." % name
-    if "boot" in notes:
+    if known_unit == "pironman5.service":
+        msg += " The case fans run at their default until it's back."
+    if boot:
         msg += " It starts again by itself when the Pi restarts."
     return True, msg
+
+
+def port_owned_by_root(port):
+    for fn in ("/proc/net/tcp", "/proc/net/tcp6"):
+        try:
+            for line in open(fn).read().splitlines()[1:]:
+                f = line.split()
+                if len(f) > 7 and f[3] == "0A" and int(f[1].rsplit(":", 1)[1], 16) == port:
+                    return f[7] == "0"
+        except OSError:
+            pass
+    return False
 
 
 # ------------------------------------------------------------------ web server
@@ -589,7 +636,7 @@ class Handler(BaseHTTPRequestHandler):
             if not s:
                 return self._send(400, {"ok": False, "msg": "That server isn't running."})
             try:
-                ok, msg = stop_server(port, s["name"], s.get("kind", "web"))
+                ok, msg = stop_server(port, s["name"], s.get("kind", "web"), s.get("unit"))
             except Exception as e:  # noqa
                 ok, msg = False, "Couldn't stop it: %s" % e
             threading.Thread(target=scan, daemon=True).start()
@@ -603,7 +650,7 @@ class Handler(BaseHTTPRequestHandler):
             done, failed = [], []
             for s in todo:
                 try:
-                    ok, msg = stop_server(s["port"], s["name"], s.get("kind", "web"))
+                    ok, msg = stop_server(s["port"], s["name"], s.get("kind", "web"), s.get("unit"))
                 except Exception as e:  # noqa
                     ok, msg = False, str(e)
                 (done if ok else failed).append(dict(name=s["name"], msg=msg))
@@ -614,6 +661,8 @@ class Handler(BaseHTTPRequestHandler):
                 msg = "Stopped all %d." % len(done)
             else:
                 msg = "Stopped %d. Still running: %s." % (len(done), ", ".join(f["name"] for f in failed))
+                if any("Set Up My Apps" in f["msg"] for f in failed):
+                    msg += " Run Set Up My Apps.sh again once so system services can be stopped."
             return self._send(200, {"ok": not failed, "msg": msg, "stopped": done, "failed": failed})
         if u.path == "/config":
             ok, msg = open_config()

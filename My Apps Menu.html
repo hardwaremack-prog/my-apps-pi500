@@ -186,7 +186,7 @@ render();
   const h=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   let last=null, failures=0, toastT;
   const armed={}, busy={};   // Stop buttons: port -> time the "click again" ends / stop in progress
-  function toast(m){toastEl.textContent=m;toastEl.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>toastEl.classList.remove('on'),3800)}
+  function toast(m){toastEl.textContent=m;toastEl.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>toastEl.classList.remove('on'),Math.max(3800,m.length*70))}
   function gb(b){return (b/1073741824).toFixed(b<10737418240?1:0)}
   function dur(s){const d=Math.floor(s/86400),hh=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?d+'d '+hh+'h':hh?hh+'h '+m+'m':m+'m'}
   function reloadToken(){return new Promise(r=>{const s=document.createElement('script');s.src='status/token.js?'+Date.now();s.onload=s.onerror=()=>{s.remove();r()};document.head.appendChild(s)})}
@@ -287,7 +287,8 @@ render();
       e.stopPropagation();
       const port=+sb.dataset.stop, s=last.servers.find(x=>x.port===port&&x.up); if(!s||busy[port])return;
       if(!(armed[port]>Date.now())){armed[port]=Date.now()+6000;paint(last);setTimeout(()=>last&&paint(last),6100);
-        if(s.remote)toast('Heads up: if you\'re using this Pi through '+s.name+', you\'ll be cut off. Click again to turn it off.');
+        if(s.warn)toast(s.warn+' Click again to stop it.');
+        else if(s.remote)toast('Heads up: if you\'re using this Pi through '+s.name+', you\'ll be cut off. Click again to turn it off.');
         return}
       delete armed[port]; busy[port]=1; paint(last);
       const r=await post('/stop',{port});
