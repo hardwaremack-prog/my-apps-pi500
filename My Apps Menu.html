@@ -84,6 +84,10 @@ kbd{background:var(--panel2);border-radius:5px;padding:1px 7px;color:var(--ink);
 .srv .stopb.busy{opacity:.6;animation:none}
 @keyframes pulse{50%{box-shadow:0 0 0 4px rgba(229,72,77,.25)}}
 .srv .x:hover{color:#ff8a9a}
+.mini.stopall{border-color:rgba(229,72,77,.55);color:#ff9aa6}
+.mini.stopall:hover,.mini.stopall:focus-visible{background:#e5484d;border-color:#e5484d;color:#fff}
+.mini.stopall.armed{background:#e5484d;border-color:#e5484d;color:#fff;animation:pulse 1s infinite}
+.mini.stopall.busy{opacity:.6;animation:none;cursor:wait}
 .pioff{color:var(--dim);font-size:15px;line-height:1.45}
 .pioff code{background:var(--panel2);padding:2px 8px;border-radius:6px;color:var(--ink);font-size:13.5px}
 .watchform{display:none;gap:8px;flex-wrap:wrap;margin:4px 0 10px}
@@ -108,6 +112,7 @@ kbd{background:var(--panel2);border-radius:5px;padding:1px 7px;color:var(--ink);
   <div class="row" id="hostrow"><span class="pioff">Checking this Pi…</span></div>
   <div class="body2">
     <div class="sechead"><span id="srvhead">Servers</span><span class="sp"></span>
+      <button class="mini stopall" id="stopall" title="Shut down every server on this Pi (SSH and VNC stay on)" hidden>■ Stop all</button>
       <button class="mini" id="watchbtn" title="Keep an eye on a server on another computer, like your PC's Shelf">+ Watch</button>
       <button class="mini" id="pibartoggle" title="Hide the server lights">Hide</button></div>
     <form class="watchform" id="watchform" autocomplete="off">
@@ -221,7 +226,23 @@ render();
     if(x.hotNow)p.push(`<span class="pill warn" title="The Pi is slowing itself down to stay cool or because of power.">🐢 <b>Slowed down</b></span>`);
     hostrow.innerHTML=p.join('');
   }
+  const sa=document.getElementById('stopall'); let saArmed=0, saBusy=false;
+  function paintStopAll(){
+    const n=last?last.servers.filter(s=>s.up&&s.stoppable&&!s.remote).length:0;
+    sa.hidden=!n&&!saBusy;
+    sa.className='mini stopall'+(saBusy?' busy':saArmed>Date.now()?' armed':'');
+    sa.textContent=saBusy?'Stopping…':saArmed>Date.now()?'Click again to stop '+n:'■ Stop all';
+  }
+  sa.onclick=async()=>{
+    if(saBusy||!last)return;
+    if(!(saArmed>Date.now())){saArmed=Date.now()+6000;paintStopAll();setTimeout(paintStopAll,6100);
+      toast('Click again to shut down every server here. SSH and VNC stay on.');return}
+    saArmed=0; saBusy=true; paintStopAll();
+    const r=await post('/stopall',{});
+    saBusy=false; toast(r.msg||'Done'); poll(); setTimeout(poll,1500);
+  };
   function paintHead(){
+    paintStopAll();
     if(!last){head.textContent='Servers';return}
     const up=last.servers.filter(s=>s.up).length, t=new Date(last.at);
     head.textContent='Servers · '+up+' running · checked '+(isNaN(t)?'':t.toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'}));
@@ -242,7 +263,8 @@ render();
     let stop='';
     if(s.up&&s.stoppable){
       const st=busy[s.port]?'busy':(armed[s.port]>Date.now()?'armed':'');
-      stop=`<span class="stopb ${st}" data-stop="${s.port}" title="Shut down ${h(s.name)}">${st==='busy'?'Stopping…':st==='armed'?'Click to confirm':'■ Stop'}</span>`;
+      const word=s.remote?'Turn off':'Stop';
+      stop=`<span class="stopb ${st}" data-stop="${s.port}" title="${s.remote?'Turn off '+h(s.name)+' until the Pi restarts':'Shut down '+h(s.name)}">${st==='busy'?(s.remote?'Turning off…':'Stopping…'):st==='armed'?'Click to confirm':'■ '+word}</span>`;
     }
     const tip=[s.name+' (port '+s.port+')',s.note,s.title&&s.title!==s.name?'Page: '+s.title:'',s.lanUrl?'From other devices: '+s.lanUrl:''].filter(Boolean).join('\n');
     return `<button class="srv ${s.up?'up':'down'}${amber?' amber':''}" data-id="${h(s.id)}" title="${h(tip)}">
@@ -264,7 +286,9 @@ render();
     if(sb&&last){
       e.stopPropagation();
       const port=+sb.dataset.stop, s=last.servers.find(x=>x.port===port&&x.up); if(!s||busy[port])return;
-      if(!(armed[port]>Date.now())){armed[port]=Date.now()+6000;paint(last);setTimeout(()=>last&&paint(last),6100);return}
+      if(!(armed[port]>Date.now())){armed[port]=Date.now()+6000;paint(last);setTimeout(()=>last&&paint(last),6100);
+        if(s.remote)toast('Heads up: if you\'re using this Pi through '+s.name+', you\'ll be cut off. Click again to turn it off.');
+        return}
       delete armed[port]; busy[port]=1; paint(last);
       const r=await post('/stop',{port});
       delete busy[port]; toast(r.msg||(r.ok?'Stopped '+s.name:'Couldn\'t stop '+s.name)); poll(); setTimeout(poll,1500);
@@ -292,7 +316,7 @@ render();
     head.textContent='Servers';
     hostrow.innerHTML=`<span class="pioff">💤 The server lights are off. To turn them on, run <code>Set Up My Apps.sh</code> once
       (or in a Terminal: <code>python3 ~/Desktop/"My Apps"/status/pi-status.py &amp;</code>). They come on by themselves after that.</span>`;
-    srvs.innerHTML=''; ww.hidden=true;
+    srvs.innerHTML=''; srvs._html=''; ww.hidden=true; sa.hidden=true;
   }
   async function poll(){
     try{

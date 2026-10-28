@@ -275,6 +275,9 @@ def scan():
                 s["config"] = True
             if up:
                 used.add(p)
+                if k["id"] in ("ssh", "vnc"):
+                    s["stoppable"] = True
+                    s["remote"] = True      # turning it off can cut off a remote session
         if s["up"] or k.get("always"):
             servers.append(s)
     # 3) anything else on this Pi that answers like a web page
@@ -368,7 +371,35 @@ def port_pids(port):
     got = parse(run(["ss", "-ltnpH"]))
     if not got and shutil.which("sudo"):
         got = parse(run(["sudo", "-n", "ss", "-ltnpH"]))
+    if not got:
+        got = proc_pids(port)
     return got
+
+
+def proc_pids(port):
+    """Same as above without "ss": match the listening socket to a program through /proc."""
+    inodes = set()
+    for fn in ("/proc/net/tcp", "/proc/net/tcp6"):
+        try:
+            for line in open(fn).read().splitlines()[1:]:
+                f = line.split()
+                if len(f) > 9 and f[3] == "0A" and int(f[1].rsplit(":", 1)[1], 16) == port:
+                    inodes.add("socket:[%s]" % f[9])
+        except OSError:
+            pass
+    found = []
+    if not inodes:
+        return found
+    for pid in filter(str.isdigit, os.listdir("/proc")):
+        try:
+            for fd in os.listdir("/proc/%s/fd" % pid):
+                if os.readlink("/proc/%s/fd/%s" % (pid, fd)) in inodes:
+                    name = open("/proc/%s/comm" % pid).read().strip()
+                    found.append((int(pid), name))
+                    break
+        except OSError:
+            continue
+    return found
 
 
 def unit_of(pid):
@@ -409,7 +440,39 @@ def still_listening(port, wait=5.0):
     return True
 
 
-def stop_server(port, name):
+REMOTE_UNITS = {
+    "ssh": ["ssh.socket", "ssh.service", "sshd.service"],
+    "vnc": ["wayvnc.service", "wayvnc-control.service", "vncserver-x11-serviced.service",
+            "vncserver-virtuald.service", "x11vnc.service", "tigervncserver@:1.service"],
+}
+
+
+def stop_remote(kind, name):
+    """Turn off SSH or VNC until the next restart (it stays switched on in Raspberry Pi Configuration)."""
+    units = [u for u in REMOTE_UNITS[kind] if run(["systemctl", "is-active", u]).strip() == "active"]
+    user_units = [u for u in ("wayvnc.service",) if kind == "vnc"
+                  and run(["systemctl", "--user", "is-active", u]).strip() == "active"]
+    for u in user_units:
+        run(["systemctl", "--user", "stop", u], timeout=20)
+    if units and not as_root(["systemctl", "stop"] + units):
+        return False, "Didn't get permission to turn off %s." % name
+    port = 22 if kind == "ssh" else next((q for q in range(5900, 5911) if q in listening()), 5900)
+    if still_listening(port, 4):
+        for pid, _ in port_pids(port):      # started some other way: stop the program itself
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except PermissionError:
+                as_root(["kill", "-TERM", str(pid)])
+            except ProcessLookupError:
+                pass
+        if still_listening(port, 3):
+            return False, "%s is still on. Turn it off in Raspberry Pi Configuration > Interfaces." % name
+    return True, "Turned off %s. It comes back when the Pi restarts (or click it to turn it on)." % name
+
+
+def stop_server(port, name, kind="web"):
+    if kind in REMOTE_UNITS:
+        return stop_remote(kind, name)
     if port == PORT or port in (22, 445, 139, 3389) or 5900 <= port <= 5910:
         return False, "That one can't be stopped from here."
     pids = port_pids(port)
@@ -522,15 +585,36 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 port = 0
             with lock:
-                s = next((x for x in state["servers"] if x.get("kind") == "web" and x.get("up") and x.get("port") == port), None)
+                s = next((x for x in state["servers"] if x.get("stoppable") and x.get("up") and x.get("port") == port), None)
             if not s:
                 return self._send(400, {"ok": False, "msg": "That server isn't running."})
             try:
-                ok, msg = stop_server(port, s["name"])
+                ok, msg = stop_server(port, s["name"], s.get("kind", "web"))
             except Exception as e:  # noqa
                 ok, msg = False, "Couldn't stop it: %s" % e
             threading.Thread(target=scan, daemon=True).start()
             return self._send(200, {"ok": ok, "msg": msg})
+        if u.path == "/stopall":
+            # every running server on this Pi; SSH and VNC only when asked, so you don't lock yourself out
+            with lock:
+                todo = [dict(x) for x in state["servers"] if x.get("up") and x.get("stoppable")
+                        and (body.get("remote") or not x.get("remote"))]
+            todo.sort(key=lambda x: bool(x.get("remote")))     # remote access last
+            done, failed = [], []
+            for s in todo:
+                try:
+                    ok, msg = stop_server(s["port"], s["name"], s.get("kind", "web"))
+                except Exception as e:  # noqa
+                    ok, msg = False, str(e)
+                (done if ok else failed).append(dict(name=s["name"], msg=msg))
+            threading.Thread(target=scan, daemon=True).start()
+            if not todo:
+                msg = "Nothing to stop."
+            elif not failed:
+                msg = "Stopped all %d." % len(done)
+            else:
+                msg = "Stopped %d. Still running: %s." % (len(done), ", ".join(f["name"] for f in failed))
+            return self._send(200, {"ok": not failed, "msg": msg, "stopped": done, "failed": failed})
         if u.path == "/config":
             ok, msg = open_config()
             return self._send(200, {"ok": ok, "msg": msg})
