@@ -35,12 +35,19 @@ button:disabled{opacity:.55;cursor:default}
 const BASE='http://127.0.0.1:'+((window.MYAPPS_STATUS&&MYAPPS_STATUS.port)||8399);
 const $=id=>document.getElementById(id);
 function reloadToken(){return new Promise(r=>{const s=document.createElement('script');s.src='../../status/token.js?'+Date.now();s.onload=s.onerror=()=>{s.remove();r()};document.head.appendChild(s)})}
+const VIA_ROOM=location.port==='8410';   // opened from Server Room (Pi Server Suite): start apps through it
+const ROOM_ID={'raidforge-demo':'raidforge'};
 async function post(path,body,retry=true){
+  if(VIA_ROOM&&path==='/start'){
+    try{const r=await fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json','X-Server-Room':'1'},body:JSON.stringify({id:ROOM_ID[body.id]||body.id})});return await r.json()}
+    catch(e){return {ok:false,msg:'Server Room is not running.'}}
+  }
   try{const r=await fetch(BASE+path,{method:'POST',headers:{'Content-Type':'application/json','X-MyApps-Key':(window.MYAPPS_STATUS||{}).token||''},body:JSON.stringify(body)});
     if(r.status===403&&retry){await reloadToken();return post(path,body,false)} return await r.json();
   }catch(e){return {ok:false,msg:'The My Apps helper is not running. Run Set Up My Apps.sh once.'}}
 }
 async function check(){
+  if(VIA_ROOM){const e=document.getElementById('st');if(e)e.textContent='Ready';return}
   try{await fetch(BASE+'/status',{cache:'no-store'});$('st').textContent='Ready';}
   catch(e){$('st').textContent='Can\'t start it from here (run Set Up My Apps.sh once) - use the Desktop icon'}
 }
