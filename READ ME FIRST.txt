@@ -69,12 +69,27 @@ PI SERVER SUITE (the Server Suite tab, key 4)
     problems, each with what it means and a command with a Copy button.
     Server Room never changes anything by itself.
   - Suite apps: RAID Forge, PiDirStat, PodDeck, The Shelf, NetSentry,
-    NetPulse, WiFi Share, PiMesh, the Task Manager, Blueprint Wiki and
-    Latch, each with a green/red light, Open and Start.
+    NetPulse, WiFi Share, PiMesh, the Task Manager, PiStartup, VNC Turbo,
+    Pironman Pilot, the Tidy Suite server, Blueprint Wiki, Latch, Pip and
+    PiSnip, each with a green/red light, Open and Start.
   Set Up My Apps.sh turns Server Room on (it starts with the Pi and only
   this Pi can open it: http://127.0.0.1:8410). On a Pi that's only a
   server, run this instead and pick just the server apps:
       bash ~/Desktop/"My Apps"/server-suite/install-server-suite.sh
+  Also in the suite:
+  - PISTARTUP: everything that starts with the Pi and how long it took
+    at boot. Switch off what you don't need (core pieces are locked).
+  - VNC TURBO: remote desktop slow? It finds why and fixes it with one
+    click. "Undo my changes" puts everything back.
+  - PIRONMAN PILOT: only shows on a Pi 5 in a Pironman 5 MAX case. OLED,
+    quiet fans, side-fan speed curve, lights and safe overclocking.
+    Set Up My Apps.sh offers to install it when it finds the case.
+  - TIDY SUITE SERVER: run the Tidy Suite from this Pi for everyone on
+    your Wi-Fi at http://<this Pi>:8780 - each person's work is kept in
+    tidy-suite/Saved work (same layout as the Windows version, so the
+    folder copies between a PC and the Pi). Server Room's installer can
+    make it start with the Pi.
+  - PIP and PISNIP, as in the Apps tab.
   LATCH (password safe) is new in this suite too: a KeePass-style vault
   in one page, encrypted with AES-256. Nothing leaves the Pi. There's no
   way to get a forgotten master password back.

@@ -12,7 +12,8 @@ A clickable menu of all my apps and games for the Pi 500, with server lights at 
 - **Pi Server Suite** (new): everything for running a Pi 5 or Pi 500 as a home server, with **Server Room** as its hub:
   a plain-English server check-up (power, heat, SD card wear, disk space, RAID, SSH, firewall, updates, backups...) that
   shows what to fix first with a command to copy, plus a light and Start button for RAID Forge, PodDeck, PiMesh, NetSentry,
-  NetPulse, PiDirStat, WiFi Share, the Task Manager, Blueprint Wiki and Latch. See [server-suite/README.md](server-suite/README.md)
+  NetPulse, PiDirStat, WiFi Share, the Task Manager, PiStartup, VNC Turbo, Pironman Pilot, the Tidy Suite server
+  (the whole house uses the Tidy Suite from the Pi), Blueprint Wiki, Latch, Pip and PiSnip. See [server-suite/README.md](server-suite/README.md)
 - **RPi500+ Task Manager**: Windows-style Task Manager (Ctrl+Shift+Esc) with an Update everything button
 - **Pip**: offline voice assistant for your headset
 - **Overdrive**: show off every part of the Pi 500 and get a score

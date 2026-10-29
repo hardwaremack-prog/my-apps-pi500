@@ -361,6 +361,83 @@ Categories=System;Utility;"
   fi
 fi
 
+# 3f4. VNC Turbo and PiStartup (small desktop windows; Tk)
+VT="$DEST/apps/vnc-turbo"
+if [ -f "$VT/vnc_turbo.py" ]; then
+  chmod +x "$VT/vnc_turbo.py" "$VT"/*.sh 2>/dev/null || true
+  VTL="[Desktop Entry]
+Type=Application
+Name=VNC Turbo
+Comment=Find what makes VNC slow and fix it (every change can be undone)
+Exec=python3 \"$VT/vnc_turbo.py\"
+Path=$VT
+Icon=$VT/vnc-turbo.svg
+Terminal=false
+Categories=Network;System;"
+  printf '%s\n' "$VTL" > "$HOME/.local/share/applications/vnc-turbo.desktop"
+  printf '%s\n' "$VTL" > "$DESK/VNC Turbo.desktop"
+  chmod +x "$DESK/VNC Turbo.desktop" "$HOME/.local/share/applications/vnc-turbo.desktop"
+  gio set "$DESK/VNC Turbo.desktop" metadata::trusted true 2>/dev/null || true
+  rm -f "$DESK/vnc-turbo.desktop"   # the one VNC Turbo's own installer makes
+fi
+PSU="$DEST/apps/pistartup"
+if [ -f "$PSU/pistartup.py" ]; then
+  chmod +x "$PSU/pistartup.py" "$PSU"/*.sh 2>/dev/null || true
+  PSL="[Desktop Entry]
+Type=Application
+Name=PiStartup
+Comment=See and switch off the apps and services that start with your Pi
+Exec=python3 \"$PSU/pistartup.py\"
+Path=$PSU
+Icon=$PSU/pistartup.svg
+Terminal=false
+Categories=Settings;System;"
+  printf '%s\n' "$PSL" > "$HOME/.local/share/applications/pistartup.desktop"
+  printf '%s\n' "$PSL" > "$DESK/PiStartup.desktop"
+  chmod +x "$DESK/PiStartup.desktop" "$HOME/.local/share/applications/pistartup.desktop"
+  gio set "$DESK/PiStartup.desktop" metadata::trusted true 2>/dev/null || true
+  rm -f "$DESK/pistartup.desktop"
+fi
+python3 -c "import tkinter" 2>/dev/null || echo "  Note: VNC Turbo and PiStartup need:  sudo apt install python3-tk"
+
+# 3f5. Tidy Suite server (the whole house uses the Tidy Suite from this Pi; work is saved here)
+TS="$DEST/tidy-suite"
+if [ -f "$TS/tidy_server.py" ]; then
+  # keep everyone's saved work from an earlier copy of My Apps
+  if [ ! -d "$TS/Saved work" ] && [ -d "$DEST.old/tidy-suite/Saved work" ]; then
+    cp -r "$DEST.old/tidy-suite/Saved work" "$TS/Saved work"
+  fi
+  chmod +x "$TS/tidy_server.py"
+  TSL="[Desktop Entry]
+Type=Application
+Name=Tidy Suite Server
+Comment=Run the Tidy Suite for everyone on your Wi-Fi; their work is saved on this Pi
+Exec=python3 \"$TS/tidy_server.py\"
+Path=$TS
+Icon=$DEST/thumbs/suite-tidy.jpg
+Terminal=true
+Categories=Office;"
+  printf '%s\n' "$TSL" > "$HOME/.local/share/applications/tidy-suite-server.desktop"
+  chmod +x "$HOME/.local/share/applications/tidy-suite-server.desktop"
+fi
+
+# 3f6. Pironman Pilot - only for a Pi 5 in a SunFounder Pironman 5 MAX case (installs a root service, so it asks)
+PP="$DEST/apps/pironman-pilot"
+if [ -f "$PP/pilot.py" ] && { command -v pironman5 >/dev/null 2>&1 || systemctl list-unit-files 2>/dev/null | grep -q '^pironman5'; }; then
+  chmod +x "$PP/install.sh" "$PP/uninstall.sh" "$PP/pilot-open" "$PP/pilot.py" 2>/dev/null || true
+  if [ ! -f /opt/pironman-pilot/pilot.py ]; then
+    echo
+    echo "  This Pi is in a Pironman case. Pironman Pilot controls its OLED, fans, lights and overclocking."
+    if ask "  Install Pironman Pilot? You'll be asked for your password. [y/N] " n; then
+      sudo bash "$PP/install.sh" || echo "  Note: Pironman Pilot didn't finish. Try:  sudo bash \"$PP/install.sh\""
+    fi
+  elif ! cmp -s "$PP/pilot.py" /opt/pironman-pilot/pilot.py; then
+    if ask "  Update Pironman Pilot to the newest version? [Y/n] " y; then
+      sudo bash "$PP/install.sh" || true
+    fi
+  fi
+fi
+
 # 3g. PiSnip (Snipping Tool) - runs its own installer the first time, or when there's a newer copy.
 #     The installer adds the Snipping Tool icon, menu entry and Print Screen shortcut.
 PS="$DEST/apps/pisnip"
@@ -516,7 +593,7 @@ done
 
 echo
 echo "  All set! Double-click 'My Apps' on the Desktop,"
-echo "  (Overdrive, PiDroid Setup, the Task Manager, Pip, Dead Mall Arena, NetPulse, NetSentry, Halo Studio, PiDirStat, PON Lab, PON Fleet, WiFi Share, Blueprint Wiki, PodDeck, PiMesh, Frostfall Cabins Server, RAID Forge, Server Room and the Snipping Tool have their own icons too),"
+echo "  (Overdrive, PiDroid Setup, the Task Manager, Pip, Dead Mall Arena, NetPulse, NetSentry, Halo Studio, PiDirStat, PON Lab, PON Fleet, WiFi Share, Blueprint Wiki, PodDeck, PiMesh, Frostfall Cabins Server, RAID Forge, Server Room, VNC Turbo, PiStartup and the Snipping Tool have their own icons too),"
 echo "  or find it in the Raspberry Pi menu under Games."
 echo "  The server lights (SSH, VNC, The Shelf, PiMesh and more) are at the top of the menu."
 [ -n "$NEED_REBOOT" ] && echo "  Restart the Pi once so the Task Manager starts cleanly:  sudo reboot"

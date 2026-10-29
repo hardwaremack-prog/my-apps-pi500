@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tidy Suite server</title>
+<style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#e6edf3;font:16px/1.5 "DejaVu Sans",system-ui,sans-serif;padding:16px;box-sizing:border-box;
+  background:radial-gradient(900px 400px at 10% -10%,#4a1226 0%,transparent 60%),radial-gradient(700px 400px at 110% 10%,#123049 0%,transparent 60%),#0f1419}
+.box{max-width:600px;width:100%;background:#161d26;border:2px solid #2a3646;border-radius:18px;padding:28px}
+h1{margin:0 0 6px;font-size:26px;display:flex;align-items:center;gap:14px}
+h1 img{width:52px;height:52px;border-radius:12px}
+p{color:#8b98a9;margin:10px 0} b{color:#e6edf3}
+code{background:#0f1419;border:1px solid #2a3646;border-radius:6px;padding:2px 7px;color:#ff6b93;font-size:13.5px}
+ul{padding-left:20px;color:#c9d1d9;margin:8px 0} li{margin:4px 0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+button{appearance:none;border:0;border-radius:999px;padding:12px 22px;font:inherit;font-weight:800;cursor:pointer;background:#c51a4a;color:#fff}
+button.alt{background:transparent;color:#e6edf3;border:2px solid #2a3646}
+button:disabled{opacity:.55;cursor:default}
+.st{display:inline-flex;align-items:center;gap:8px;color:#8b98a9;font-size:14.5px}
+</style></head><body><div class="box">
+<h1><img src="../thumbs/suite-tidy.jpg" alt="" style="object-fit:cover">Tidy Suite server</h1>
+<p>Run the whole Tidy Suite from this Pi so everyone in the house uses it from their own phone or computer, and each person's work is <b>saved on the Pi</b>.</p>
+<ul><li>Every app (Tidy, Neat, Spruce, Steady, Ready, Rugged...) at one address: <b>http://&lt;this Pi&gt;:8780</b></li><li>Each person picks their name in the apps, so nobody's work gets mixed up</li><li>Saved work lives in <code>tidy-suite/Saved work</code> - the same folder layout as the Windows version, so you can copy it between a PC and the Pi</li></ul>
+<div class="row">
+  <button id="go">Open Tidy Suite server</button>
+  <button class="alt" id="here">Use it without the server</button>
+  <span class="st" id="st">Checking…</span>
+</div>
+<p style="margin-top:18px">Server Room's installer can make it start with the Pi. By hand: <code>python3 ~/Desktop/"My Apps"/tidy-suite/tidy_server.py</code>. It's for your home Wi-Fi: don't forward port 8780 on your router.</p>
+</div>
+<script src="../status/token.js"></script>
+<script>
+const BASE='http://127.0.0.1:'+((window.MYAPPS_STATUS&&MYAPPS_STATUS.port)||8399);
+const $=id=>document.getElementById(id);
+function reloadToken(){return new Promise(r=>{const s=document.createElement('script');s.src='../status/token.js?'+Date.now();s.onload=s.onerror=()=>{s.remove();r()};document.head.appendChild(s)})}
+async function post(path,body,retry=true){
+  try{const r=await fetch(BASE+path,{method:'POST',headers:{'Content-Type':'application/json','X-MyApps-Key':(window.MYAPPS_STATUS||{}).token||''},body:JSON.stringify(body)});
+    if(r.status===403&&retry){await reloadToken();return post(path,body,false)} return await r.json();
+  }catch(e){return {ok:false,msg:'The My Apps helper is not running. Run Set Up My Apps.sh once.'}}
+}
+async function check(){
+  try{await fetch(BASE+'/status',{cache:'no-store'});$('st').textContent='Ready';}
+  catch(e){$('st').textContent='Can\'t start it from here (run Set Up My Apps.sh once) - use the Desktop icon'}
+}
+async function start(id,btn){
+  btn.disabled=true;$('st').textContent='Opening its window…';
+  const r=await post('/start',{id});
+  $('st').textContent=r.ok?'Opening its window…':(r.msg||'Couldn\'t start it.');
+  setTimeout(()=>{btn.disabled=false},4000);
+}
+$('go').onclick=()=>start('tidy',$('go'));
+$('here').onclick=()=>location.href='Open Tidy Suite.html';
+check();
+</script></body></html>

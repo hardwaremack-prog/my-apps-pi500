@@ -120,12 +120,25 @@ const GROUPS=[
   {id:'pimesh',name:'PiMesh',img:'pimesh.jpg',href:'../apps/pimesh/Open PiMesh.html',
    blurb:'Links all your Pis together. One dashboard shows every Pi\'s CPU, heat, memory, disk and uptime, and who dropped off. Port 8470.'},
   {id:'taskmgr',name:'RPi500+ Task Manager',img:'task-manager.jpg',href:'../apps/task-manager/Open Task Manager.html',tag:'changes the Pi',
-   blurb:'Windows-style Task Manager (Ctrl+Shift+Esc): gauges, End task, Tailscale, a phone web page and one "Update everything" button.'}]],
- ['Notes & passwords',[
+   blurb:'Windows-style Task Manager (Ctrl+Shift+Esc): gauges, End task, Tailscale, a phone web page and one "Update everything" button.'},
+  {id:'pistartup',name:'PiStartup',img:'pistartup.jpg',href:'../apps/pistartup/Open PiStartup.html',
+   blurb:'See everything that starts with the Pi, how long each took at boot, and switch off what a server doesn\'t need.'},
+  {id:'vncturbo',name:'VNC Turbo',img:'vnc-turbo.jpg',href:'../apps/vnc-turbo/Open VNC Turbo.html',
+   blurb:'Remote desktop slow? Finds the cause (screen size, Wi-Fi, heat, background services) and fixes it with one click. Undo puts it all back.'},
+  {id:'pilot',name:'Pironman Pilot',img:'pironman-pilot.jpg',href:'../apps/pironman-pilot/Open Pironman Pilot.html',tag:'Pironman 5 MAX',
+   blurb:'For a Pi 5 in a Pironman case: OLED pages, quiet fan curves, side-fan speed control, lights and test-booted overclocking.'}]],
+ ['Home & office',[
+  {id:'tidy',name:'Tidy Suite',img:'suite-tidy.jpg',href:'../tidy-suite/Open Tidy Suite server.html',tag:'whole house',
+   blurb:'Host the Tidy Suite (spreadsheets, docs, slides, bills, calendar, chores, grid-down guide...) for everyone on your Wi-Fi. Each person\'s work is saved on the Pi. Port 8780.'},
   {id:'wiki',name:'Blueprint Wiki',img:'blueprint-wiki.jpg',href:'../apps/blueprint-wiki/Open Blueprint Wiki.html',
    blurb:'Write down how your server is set up: pages, checklists, PDFs and drag-and-drop network maps.'},
   {id:'latch',name:'Latch',img:'latch.jpg',href:'../apps/latch/index.html',
    blurb:'Offline, KeePass-style password safe for all your server, router and container passwords. AES-256, nothing leaves the Pi.'}]],
+ ['Everyday tools',[
+  {id:'pip',name:'Pip',img:'pip.jpg',href:'../apps/pip/Open Pip.html',tag:'offline AI',
+   blurb:'Talk to your Pi through a headset. Pip listens, thinks and answers out loud with no internet - a private voice assistant for the server.'},
+  {id:'pisnip',name:'PiSnip',img:'pisnip.jpg',href:'../apps/pisnip/Open PiSnip.html',
+   blurb:'Windows-style Snipping Tool: Print Screen to snip, mark it up, or record the screen. Handy for documenting your setup in Blueprint Wiki.'}]],
 ];
 let view='apps'; try{view=localStorage.getItem('serverroom.view')||'apps'}catch(e){}
 let apps={}, checks=null, helper=SERVED, filter='problems';
@@ -141,6 +154,7 @@ function renderApps(){
     h+=`<h2>${esc(g)}</h2><div class="grid">`;
     for(const a of list){
       const s=apps[a.id]||{}, up=!!s.up;
+      if(s.hidden) continue;
       const dot=helper?`<span class="dot ${up?'up':'down'}" title="${up?'Running':'Not running'}"></span>`:'';
       let acts='';
       if(helper){

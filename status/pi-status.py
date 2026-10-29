@@ -62,11 +62,14 @@ KNOWN = [
          note="Pi 500 hardware showcase."),
     dict(id="taskmgr", name="Task Manager web page", title=r"task manager", ports=[8090, 8091], launch="rpi500-taskmgr", unit="rpi500-web.service",
          note="RPi500+ Task Manager for phones and PCs."),
-    dict(id="pilot", name="Pironman Pilot", title=r"pironman pilot", ports=[8765, 47821, 47822], unit="pironman-pilot.service",
+    dict(id="pilot", name="Pironman Pilot", title=r"pironman pilot", ports=[47821, 47822, 47823, 47824, 8765], unit="pironman-pilot.service",
+         launch="pironman-pilot",
          note="Pironman 5 MAX case control."),
     dict(id="pdash", name="Pironman dashboard", title=r"^\s*dashboard\s*$|pironman ?5", ports=[34001], unit="pironman5.service",
          warn="SunFounder's case service: stopping it also stops the case fans, LEDs and OLED until restart.",
          note="SunFounder's case dashboard."),
+    dict(id="tidy", name="Tidy Suite server", title=r"tidy suite", ports=[8780, 8781, 8782], launch="tidy-suite-server",
+         unit="user:tidy-suite.service", note="Tidy Suite for everyone in the house; their work is saved on this Pi."),
     dict(id="pip", name="Pip", title=r"\bpip\b", ports=[8765], launch="pip-voice",
          note="Offline voice chat."),
     dict(id="raidforge", name="RAID Forge", kind="launch", ports=[], launch="raidforge",
@@ -79,6 +82,9 @@ KNOWN = [
 # desktop programs the menu tiles can start, but that have no server light
 LAUNCH_ONLY = [
     dict(id="pidroid", launch="pidroid"),
+    dict(id="vncturbo", launch="vnc-turbo"),
+    dict(id="pistartup", launch="pistartup"),
+    dict(id="pisnip", launch="pisnip"),
 ]
 SKIP_PORTS = {PORT, 8399, 53, 111, 631, 4713}   # this helper, DNS, rpcbind, printer queue, sound server
 if web_share:

@@ -41,9 +41,24 @@ APPS = [
     dict(id="wifishare", desktop="wifi-share", ports=[], folder="wifi-share"),
     dict(id="latch", desktop="", ports=[], folder="latch", static=True),
     dict(id="shelf", desktop="", ports=[8080, 8081, 8000], title=r"shelf"),
+    dict(id="tidy", desktop="tidy-suite-server", ports=[8780, 8781, 8782], title=r"tidy suite",
+         unit="user:tidy-suite.service", root_folder="tidy-suite"),
+    dict(id="pip", desktop="pip-voice", ports=[8765], title=r"\bpip\b", folder="pip"),
+    dict(id="pilot", desktop="pironman-pilot", ports=[47821, 47822, 47823, 47824], title=r"pironman pilot",
+         unit="pironman-pilot.service", folder="pironman-pilot", needs="pironman"),
+    dict(id="vncturbo", desktop="vnc-turbo", ports=[], proc="vnc_turbo.py", folder="vnc-turbo"),
+    dict(id="pistartup", desktop="pistartup", ports=[], proc="pistartup.py", folder="pistartup"),
+    dict(id="pisnip", desktop="pisnip", ports=[], proc="pisnip", folder="pisnip"),
 ]
 APP_BY_ID = {a["id"]: a for a in APPS}
 SERVE_FOLDERS = {a["folder"] for a in APPS if a.get("folder")}
+
+
+def has_pironman():
+    """A SunFounder Pironman case: its software or Pironman Pilot is on this Pi."""
+    return bool(shutil.which("pironman5") or os.path.exists("/opt/pironman-pilot/pilot.py")
+                or os.path.exists("/etc/systemd/system/pironman5.service")
+                or os.path.exists("/lib/systemd/system/pironman5.service"))
 
 
 def run(cmd, timeout=6):
@@ -113,6 +128,8 @@ def app_status():
     used = set()
     for a in APPS:
         s = dict(id=a["id"], up=False, url="", installed=False)
+        if a.get("needs") == "pironman" and not has_pironman():
+            s["hidden"] = True
         if a.get("static"):
             s["installed"] = os.path.exists(os.path.join(ROOT, "apps", a["folder"]))
             out[a["id"]] = s
@@ -131,9 +148,9 @@ def app_status():
             break
         if not s["up"] and a.get("unit") and unit_active(a["unit"]) and a["ports"]:
             s.update(up=True, url="http://127.0.0.1:%d/" % a["ports"][0], port=a["ports"][0])
-        if not s["up"] and a["id"] in ("raidforge", "wifishare"):
+        prog = a.get("proc") or {"raidforge": "raidforge.py", "wifishare": "wifi_share.py"}.get(a["id"])
+        if not s["up"] and prog:
             # desktop windows: running if the program is in the process list
-            prog = {"raidforge": "raidforge.py", "wifishare": "wifi_share.py"}[a["id"]]
             if run(["pgrep", "-f", prog], 2)[0] == 0:
                 s["up"] = True
         out[a["id"]] = s
@@ -458,7 +475,7 @@ def checkup():
     if failed:
         C.append(chk("failed", "Reliability", "Background services", WARN,
                      "%d service%s failed: %s." % (len(failed), "" if len(failed) == 1 else "s", ", ".join(failed[:8])),
-                     "See why (swap in the name):", "systemctl status " + failed[0]))
+                     "See why (swap in the name), or switch it off in PiStartup if you don't need it:", "systemctl status " + failed[0]))
     elif code == 0:
         C.append(chk("failed", "Reliability", "Background services", OK, "No background services have failed."))
 
@@ -540,6 +557,7 @@ def demo_checkup():
 
 def demo_apps():
     up = {"poddeck": 8070, "pimesh": 8470, "wiki": 8080, "netsentry": 8775}
+    up["tidy"] = 8780
     return {a["id"]: dict(id=a["id"], up=a["id"] in up, url=("http://127.0.0.1:%d/" % up[a["id"]]) if a["id"] in up else "",
                           installed=a["id"] != "shelf") for a in APPS}
 
@@ -608,6 +626,8 @@ class Handler(BaseHTTPRequestHandler):
             parts = parts[1:]
         elif parts[0] == "thumbs" and len(parts) == 2:
             base = os.path.join(ROOT, "thumbs")
+        elif parts[0] == "tidy-suite" and len(parts) > 1 and parts[1] != "Saved work" and not p.endswith(".py"):
+            base = os.path.join(ROOT, "tidy-suite")
         if base:
             full = os.path.realpath(os.path.join(base, *parts[1:]))
             if full.startswith(os.path.realpath(base) + os.sep) and os.path.isfile(full):

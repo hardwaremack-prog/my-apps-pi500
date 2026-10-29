@@ -21,6 +21,12 @@ Everything you need to run a Raspberry Pi 5 or Pi 500 as a home server, in one p
 | 🧮 | **RPi500+ Task Manager** | Windows-style Task Manager, phone web page and an "Update everything" button. |
 | 📘 | **Blueprint Wiki** | Document your server: pages, checklists, PDFs, network maps. |
 | 🔐 | **Latch** | Offline password safe for your server, router and container passwords. |
+| 🚀 | **PiStartup** | Everything that starts with the Pi, with boot times; switch off what a server doesn't need. |
+| ⚡ | **VNC Turbo** | Makes remote desktop fast again: finds the cause and fixes it with one click, all undoable. |
+| 🌀 | **Pironman Pilot** | Only on a Pi 5 in a SunFounder Pironman 5 MAX case: OLED, quiet fan curves, side-fan speed control, lights, safe overclocking. |
+| 🗂️ | **Tidy Suite** | Hosts the whole Tidy Suite for everyone on your Wi-Fi (port 8780); each person's work is saved on the Pi. |
+| 🎙️ | **Pip** | Offline voice assistant for a headset - no internet needed. |
+| ✂️ | **PiSnip** | Snipping Tool: screenshots, markup and screen recording. |
 | 🗄️ | **The Shelf** | Home-network hub (installs separately: [the-shelf](https://github.com/hardwaremack-prog/the-shelf)). |
 
 ## What the check-up looks at
@@ -29,7 +35,7 @@ Everything you need to run a Raspberry Pi 5 or Pi 500 as a home server, in one p
 - **Storage**: running from the SD card (it wears out), disk space on every drive, RAID health and rebuilds, log size
 - **Security**: SSH password logins and root login, fail2ban, firewall, what's open to the network, sudo without a password
 - **Updates**: waiting updates (and how many are security fixes), automatic security updates, restart needed, bootloader (EEPROM)
-- **Reliability**: clock sync, failed services, freeze protection (hardware watchdog), backups, a fixed address for the Pi
+- **Reliability**: clock sync, failed services (switch off what you don't need in PiStartup), freeze protection (hardware watchdog), backups, a fixed address for the Pi
 
 Each problem says what it means and gives a command you can copy. Server Room never changes anything by itself.
 

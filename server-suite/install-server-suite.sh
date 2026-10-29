@@ -2,8 +2,9 @@
 # Pi Server Suite installer (Raspberry Pi 5 / Pi 500, Raspberry Pi OS Bookworm or newer)
 #
 #   bash install-server-suite.sh            pick the apps you want (asks before each one)
-#   bash install-server-suite.sh --all      install the apps without asking (still asks about the Task Manager
-#                                           and WiFi Share, which change the whole Pi)
+#   bash install-server-suite.sh --all      install the apps without asking (still asks about the Task Manager,
+#                                           WiFi Share and Pironman Pilot, which change the whole Pi,
+#                                           and Pip, which is a big download)
 #   bash install-server-suite.sh --hub-only just the Server Room hub (used by Set Up My Apps.sh)
 #
 # Adds a Desktop icon and a menu entry for Server Room and each app you pick. Apps that run all the
@@ -210,6 +211,80 @@ fi
 LT="$APPS/latch"
 if [ -f "$LT/index.html" ] && ask "  Latch - offline password safe for all your server passwords? [Y/n] " y; then
   launcher "latch" "Latch" "Offline password safe" "$BROWSER \"$LT/index.html\"" "$LT" "$ROOT/thumbs/latch.jpg" false "Utility;Security;"
+fi
+
+# Tidy Suite server (the whole house uses the Tidy Suite from this Pi)
+TS="$ROOT/tidy-suite"
+if [ -f "$TS/tidy_server.py" ] && ask "  Tidy Suite - host it for everyone on your Wi-Fi, with their work saved on this Pi? [Y/n] " y; then
+  chmod +x "$TS/tidy_server.py"
+  launcher "tidy-suite-server" "Tidy Suite Server" "Run the Tidy Suite for everyone on your Wi-Fi" \
+    "python3 \"$TS/tidy_server.py\"" "$TS" "$ROOT/thumbs/suite-tidy.jpg" true "Office;"
+  if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+    mkdir -p "$HOME/.config/systemd/user"
+    cat > "$HOME/.config/systemd/user/tidy-suite.service" <<EOS
+[Unit]
+Description=Tidy Suite server (http://<this Pi>:8780)
+
+[Service]
+ExecStart=/usr/bin/env python3 "$TS/tidy_server.py" --no-browser
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+EOS
+    systemctl --user daemon-reload || true
+    systemctl --user enable --now tidy-suite.service >/dev/null 2>&1 \
+      && say "    Running now and starts with the Pi: http://$(hostname -I 2>/dev/null | awk '{print $1}'):8780" \
+      || say "    Start it with the Tidy Suite Server icon."
+    # keep running after you log out (needs your password once)
+    loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q yes || sudo loginctl enable-linger "$USER" 2>/dev/null || true
+  fi
+fi
+
+# PiStartup and VNC Turbo (small desktop windows)
+if ! python3 -c "import tkinter" 2>/dev/null; then NEED_TK=1; fi
+PSU="$APPS/pistartup"
+if [ -f "$PSU/pistartup.py" ] && ask "  PiStartup - see and switch off what starts with the Pi? [Y/n] " y; then
+  chmod +x "$PSU/pistartup.py"
+  launcher "pistartup" "PiStartup" "See and switch off the apps and services that start with your Pi" \
+    "python3 \"$PSU/pistartup.py\"" "$PSU" "$PSU/pistartup.svg" false "Settings;System;"
+  [ -n "$NEED_TK" ] && { sudo apt-get install -y python3-tk >/dev/null && NEED_TK=""; } || true
+fi
+VT="$APPS/vnc-turbo"
+if [ -f "$VT/vnc_turbo.py" ] && ask "  VNC Turbo - make remote desktop fast again? [Y/n] " y; then
+  chmod +x "$VT/vnc_turbo.py"
+  launcher "vnc-turbo" "VNC Turbo" "Find what makes VNC slow and fix it (every change can be undone)" \
+    "python3 \"$VT/vnc_turbo.py\"" "$VT" "$VT/vnc-turbo.svg" false "Network;System;"
+  [ -n "$NEED_TK" ] && { sudo apt-get install -y python3-tk >/dev/null && NEED_TK=""; } || true
+fi
+
+# Pironman Pilot - only on a Pi in a SunFounder Pironman 5 MAX case (installs a root service, so it always asks)
+PP="$APPS/pironman-pilot"
+if [ -f "$PP/pilot.py" ] && { command -v pironman5 >/dev/null 2>&1 || systemctl list-unit-files 2>/dev/null | grep -q '^pironman5'; }; then
+  say "  This Pi is in a Pironman case. Pironman Pilot controls its OLED, fans, lights and overclocking."
+  if ask_big "    Install Pironman Pilot? [y/N] "; then
+    chmod +x "$PP"/*.sh "$PP/pilot-open" "$PP/pilot.py" 2>/dev/null || true
+    sudo bash "$PP/install.sh" || say "    Note: it didn't finish. Try:  sudo bash \"$PP/install.sh\""
+  fi
+fi
+
+# PiSnip (Snipping Tool) - its own installer adds the icons and the Print Screen key
+PS="$APPS/pisnip"
+if [ -f "$PS/pisnip.py" ] && ask "  PiSnip - Snipping Tool for screenshots and screen recording? [Y/n] " y; then
+  chmod +x "$PS/pisnip.py" "$PS/install.sh" 2>/dev/null || true
+  bash "$PS/install.sh" || say "    Note: PiSnip didn't finish. Try:  bash \"$PS/install.sh\""
+fi
+
+# Pip (offline voice assistant) - big download, so it always asks
+PIPSRC="$APPS/pip"; PIPDIR="$HOME/Pip"
+if [ -f "$PIPSRC/server.py" ]; then
+  say "  Pip: offline voice assistant for a headset. Setup downloads 1.5 to 3.5 GB and takes 10 to 20 minutes."
+  if ask_big "    Set up Pip? [y/N] "; then
+    [ -f "$PIPDIR/server.py" ] || { cp -r "$PIPSRC" "$PIPDIR"; rm -f "$PIPDIR/Open Pip.html"; }
+    chmod +x "$PIPDIR"/*.sh 2>/dev/null || true
+    (cd "$PIPDIR" && bash ./install.sh) || say "    Note: Pip's setup didn't finish. Try again with:  bash ~/Pip/install.sh"
+  fi
 fi
 
 # Pi OS: don't ask "Execute?" every time a launcher is double-clicked
