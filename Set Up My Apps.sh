@@ -499,6 +499,14 @@ X-GNOME-Autostart-enabled=true" > "$HOME/.config/autostart/myapps-status.desktop
   sleep 1
 fi
 
+# 3j. Server Room - hub of the Pi Server Suite (server check-up + a light for every server app).
+#     Starts with the Pi and only listens on this Pi (127.0.0.1:8410). The suite's other apps are set up above;
+#     on a Pi that's only a server, run server-suite/install-server-suite.sh instead to pick just those.
+if [ -f "$DEST/server-suite/install-server-suite.sh" ]; then
+  bash "$DEST/server-suite/install-server-suite.sh" --hub-only </dev/null | sed -n 's/^  Server Room:/  Server Room:/p' \
+    || echo "  Note: Server Room didn't finish. Try:  bash \"$DEST/server-suite/install-server-suite.sh\" --hub-only"
+fi
+
 # Pi OS: don't ask "Execute?" every time a launcher is double-clicked
 for f in "$HOME/.config/libfm/libfm.conf"; do
   if [ -f "$f" ] && ! grep -q '^quick_exec=1' "$f"; then
@@ -508,7 +516,7 @@ done
 
 echo
 echo "  All set! Double-click 'My Apps' on the Desktop,"
-echo "  (Overdrive, PiDroid Setup, the Task Manager, Pip, Dead Mall Arena, NetPulse, NetSentry, Halo Studio, PiDirStat, PON Lab, PON Fleet, WiFi Share, Blueprint Wiki, PodDeck, PiMesh, Frostfall Cabins Server, RAID Forge and the Snipping Tool have their own icons too),"
+echo "  (Overdrive, PiDroid Setup, the Task Manager, Pip, Dead Mall Arena, NetPulse, NetSentry, Halo Studio, PiDirStat, PON Lab, PON Fleet, WiFi Share, Blueprint Wiki, PodDeck, PiMesh, Frostfall Cabins Server, RAID Forge, Server Room and the Snipping Tool have their own icons too),"
 echo "  or find it in the Raspberry Pi menu under Games."
 echo "  The server lights (SSH, VNC, The Shelf, PiMesh and more) are at the top of the menu."
 [ -n "$NEED_REBOOT" ] && echo "  Restart the Pi once so the Task Manager starts cleanly:  sudo reboot"

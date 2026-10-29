@@ -58,6 +58,27 @@ WEB ACCESS (open My Apps from your phone or PC, with a password)
   - It's for your home Wi-Fi only: don't forward port 8400 on your
     router.
 
+PI SERVER SUITE (the Server Suite tab, key 4)
+  Everything for running a Pi 5 or Pi 500 as a home server, with Server
+  Room as the hub. Double-click Server Room on the Desktop (or its tile).
+  - Server check-up: about 20 checks every Pi server should pass - power
+    supply, heat, running from the SD card (it wears out), disk space,
+    RAID health, SSH passwords, fail2ban, firewall, waiting updates,
+    automatic security updates, bootloader, clock, failed services,
+    freeze protection and backups. "Things to fix" shows only the
+    problems, each with what it means and a command with a Copy button.
+    Server Room never changes anything by itself.
+  - Suite apps: RAID Forge, PiDirStat, PodDeck, The Shelf, NetSentry,
+    NetPulse, WiFi Share, PiMesh, the Task Manager, Blueprint Wiki and
+    Latch, each with a green/red light, Open and Start.
+  Set Up My Apps.sh turns Server Room on (it starts with the Pi and only
+  this Pi can open it: http://127.0.0.1:8410). On a Pi that's only a
+  server, run this instead and pick just the server apps:
+      bash ~/Desktop/"My Apps"/server-suite/install-server-suite.sh
+  LATCH (password safe) is new in this suite too: a KeePass-style vault
+  in one page, encrypted with AES-256. Nothing leaves the Pi. There's no
+  way to get a forgotten master password back.
+
 RUGGED (grid-down guide)
   Rugged is in the Tidy Suite tab. It works with no internet, so it's
   the one to keep handy in a power outage. Run the Pi from a USB-C power

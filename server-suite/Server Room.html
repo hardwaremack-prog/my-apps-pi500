@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Server Room · Pi Server Suite</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#151b24; --panel2:#1c2430; --line:#2a3442; --ink:#e9eef5; --dim:#93a1b3;
+  --accent:#4cc38a; --accent2:#5aa9ff; --ok:#4cc38a; --warn:#f5b84a; --bad:#ff5d6c; --info:#5aa9ff; --focus:#fff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"DejaVu Sans","Noto Sans",system-ui,sans-serif}
+body{min-height:100vh;background:
+  linear-gradient(transparent 0 31px, rgba(255,255,255,.025) 31px 32px) 0 0/100% 32px,
+  radial-gradient(1000px 420px at 0% -10%, #123a2c 0%, transparent 60%),
+  radial-gradient(900px 420px at 110% 0%, #142a4a 0%, transparent 60%), var(--bg)}
+a{color:inherit}
+header{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:28px 36px 6px}
+.logo{width:58px;height:58px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);display:grid;place-items:center}
+h1{margin:0;font-size:42px;font-weight:900;letter-spacing:-.5px;line-height:1}
+h1 small{display:block;font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:700;margin-top:8px}
+.score{margin-left:auto;display:flex;align-items:center;gap:14px}
+.score[hidden]{display:none}
+.ring{--p:0;--c:var(--dim);width:74px;height:74px;border-radius:50%;display:grid;place-items:center;
+  background:conic-gradient(var(--c) calc(var(--p)*1%), var(--line) 0)}
+.ring b{width:58px;height:58px;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-size:20px;font-variant-numeric:tabular-nums}
+.score .lbl{color:var(--dim);font-size:13px;max-width:180px;line-height:1.35}
+.score .lbl strong{display:block;color:var(--ink);font-size:16px}
+.pills{display:flex;gap:8px;padding:6px 36px 0;flex-wrap:wrap}
+.pill{font-size:13px;padding:4px 10px;border-radius:99px;background:var(--panel);border:1px solid var(--line);color:var(--dim)}
+.pill i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}
+nav{display:flex;gap:10px;padding:18px 36px 0}
+.tab{appearance:none;border:2px solid transparent;background:var(--panel);color:var(--ink);font:inherit;font-size:17px;font-weight:700;
+  padding:10px 18px;border-radius:12px;cursor:pointer}
+.tab[aria-selected=true]{background:var(--accent);color:#06130d}
+.tab:focus-visible,.btn:focus-visible,.card:focus-visible{outline:none;border-color:var(--focus)}
+main{padding:18px 36px 40px}
+h2{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:22px 0 10px;font-weight:700}
+h2:first-child{margin-top:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{position:relative;display:flex;gap:14px;align-items:flex-start;background:var(--panel);border:2px solid var(--line);border-radius:14px;
+  padding:14px;text-decoration:none;min-height:118px}
+.card:hover{border-color:#3d4a5c}
+.thumb{flex:0 0 86px;height:86px;border-radius:10px;background:var(--panel2) center/cover no-repeat;display:grid;place-items:center;font-size:30px;font-weight:900;color:var(--dim)}
+.card .body{flex:1;min-width:0}
+.card .name{margin:0 0 4px;font-size:18px;font-weight:800;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px}
+.card .blurb{margin:0;font-size:13.5px;line-height:1.45;color:var(--dim)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--line);flex:0 0 10px}
+.dot.up{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.dot.down{background:#5b2630}
+.acts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn{appearance:none;border:2px solid var(--line);background:var(--panel2);color:var(--ink);font:inherit;font-size:13px;font-weight:700;
+  padding:6px 12px;border-radius:9px;cursor:pointer;text-decoration:none}
+.btn.go{background:var(--accent);border-color:var(--accent);color:#06130d}
+.tag{white-space:nowrap;font-size:11px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:6px;background:var(--panel2);color:var(--dim)}
+.checks{display:flex;flex-direction:column;gap:10px}
+.chk{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:12px;padding:12px 16px}
+.chk.ok{--c:var(--ok)}.chk.warn{--c:var(--warn)}.chk.bad{--c:var(--bad)}.chk.info{--c:var(--info)}
+.chk .top{display:flex;align-items:center;gap:10px}
+.chk .t{font-weight:800;font-size:16px}
+.chk .st{margin-left:auto;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c)}
+.chk p{margin:6px 0 0;color:var(--dim);font-size:14px;line-height:1.45}
+.chk .fix{color:var(--ink)}
+.cmd{display:flex;gap:8px;align-items:stretch;margin-top:8px}
+.cmd code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+  font-family:"DejaVu Sans Mono",monospace;font-size:12.5px;color:#cde3d6}
+.filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.note{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:16px 18px;color:var(--dim);line-height:1.55}
+.note b{color:var(--ink)} .note code{background:#0a0e14;padding:2px 6px;border-radius:5px;color:#cde3d6}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+  padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+#toast.on{opacity:1}
+footer{padding:0 36px 30px;color:var(--dim);font-size:13px}
+kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
+@media (max-width:640px){header,nav,main,.pills,footer{padding-left:16px;padding-right:16px}h1{font-size:32px}.score{margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo" aria-hidden="true">
+    <svg width="34" height="34" viewBox="0 0 34 34" fill="none"><rect x="4" y="4" width="26" height="8" rx="2" stroke="#4cc38a" stroke-width="2.4"/><rect x="4" y="13" width="26" height="8" rx="2" stroke="#5aa9ff" stroke-width="2.4"/><rect x="4" y="22" width="26" height="8" rx="2" stroke="#93a1b3" stroke-width="2.4"/><circle cx="9" cy="8" r="1.6" fill="#4cc38a"/><circle cx="9" cy="17" r="1.6" fill="#5aa9ff"/><circle cx="9" cy="26" r="1.6" fill="#93a1b3"/></svg>
+  </div>
+  <h1>Server Room<small>Pi Server Suite · Pi 5 &amp; Pi 500</small></h1>
+  <div class="score" id="score" hidden>
+    <div class="ring" id="ring"><b id="pct">–</b></div>
+    <div class="lbl"><strong id="scoreTitle">Server health</strong><span id="scoreSub"></span></div>
+  </div>
+</header>
+<div class="pills" id="pills"></div>
+<nav role="tablist">
+  <button class="tab" role="tab" data-v="apps">🧰 Suite apps</button>
+  <button class="tab" role="tab" data-v="check">🩺 Server check-up</button>
+</nav>
+<main id="main"></main>
+<footer>Keyboard: <kbd>1</kbd> apps, <kbd>2</kbd> check-up, <kbd>R</kbd> refresh. Server Room only listens on this Pi (127.0.0.1:8410) and never changes anything by itself.</footer>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+const HELPER='http://127.0.0.1:8410';
+const SERVED=location.protocol.startsWith('http');
+const GROUPS=[
+ ['Storage',[
+  {id:'raidforge',name:'RAID Forge',img:'raidforge.jpg',href:'../apps/raidforge/Open RAID Forge.html',tag:'Pi 5 · 500',
+   blurb:'Point-and-click RAID 0/1/5/6/10 on USB drives or a SATA/NVMe HAT. Moves the whole system onto the RAID. RAID Watch alarms (and pings your phone) if a drive fails.'},
+  {id:'pidirstat',name:'PiDirStat',img:'pidirstat.jpg',href:'../apps/pidirstat/Open PiDirStat.html',
+   blurb:'See what is filling up your drives: biggest folders, file types and a colored block map like WinDirStat.'}]],
+ ['Containers & services',[
+  {id:'poddeck',name:'PodDeck',img:'poddeck.jpg',href:'../apps/poddeck/Open PodDeck.html',tag:'64-bit OS',
+   blurb:'Control panel for Podman containers: start, stop, logs, and one-click Uptime Kuma, File Browser, web server and more. Port 8070.'},
+  {id:'shelf',name:'The Shelf',img:'shelf-tour.jpg',href:'https://github.com/hardwaremack-prog/the-shelf',tag:'separate install',net:true,
+   blurb:'Your home-network hub - a home SharePoint for files, pages and lists that every device in the house can open.'}]],
+ ['Network & security',[
+  {id:'netsentry',name:'NetSentry',img:'netsentry.jpg',href:'../apps/netsentry/Open NetSentry.html',
+   blurb:'Live list of every device on your network, with plain-English warnings about new devices, fake routers and backdoor ports.'},
+  {id:'netpulse',name:'NetPulse',img:'netpulse.jpg',href:'../apps/netpulse/Open NetPulse.html',
+   blurb:'Up/down board for a list of IPs (import from Excel), plus PingPlotter-style ping graphs and route tracing.'},
+  {id:'wifishare',name:'WiFi Share',img:'wifi-share.jpg',href:'../apps/wifi-share/Open WiFi Share.html',
+   blurb:'Share the Pi\'s Wi-Fi out of its Ethernet port with one button and see what\'s plugged in.'}]],
+ ['Fleet & system',[
+  {id:'pimesh',name:'PiMesh',img:'pimesh.jpg',href:'../apps/pimesh/Open PiMesh.html',
+   blurb:'Links all your Pis together. One dashboard shows every Pi\'s CPU, heat, memory, disk and uptime, and who dropped off. Port 8470.'},
+  {id:'taskmgr',name:'RPi500+ Task Manager',img:'task-manager.jpg',href:'../apps/task-manager/Open Task Manager.html',tag:'changes the Pi',
+   blurb:'Windows-style Task Manager (Ctrl+Shift+Esc): gauges, End task, Tailscale, a phone web page and one "Update everything" button.'}]],
+ ['Notes & passwords',[
+  {id:'wiki',name:'Blueprint Wiki',img:'blueprint-wiki.jpg',href:'../apps/blueprint-wiki/Open Blueprint Wiki.html',
+   blurb:'Write down how your server is set up: pages, checklists, PDFs and drag-and-drop network maps.'},
+  {id:'latch',name:'Latch',img:'latch.jpg',href:'../apps/latch/index.html',
+   blurb:'Offline, KeePass-style password safe for all your server, router and container passwords. AES-256, nothing leaves the Pi.'}]],
+];
+let view='apps'; try{view=localStorage.getItem('serverroom.view')||'apps'}catch(e){}
+let apps={}, checks=null, helper=SERVED, filter='problems';
+const $=s=>document.querySelector(s);
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),3200)}
+
+function renderApps(){
+  let h='';
+  if(!helper) h+=`<div class="note" style="margin-bottom:8px"><b>Live lights are off.</b> Start Server Room to see which apps are running and to run the check-up:
+    double-click the <b>Server Room</b> icon on the Desktop, or run <code>python3 server-suite/server-room.py --open</code>. Every tile below still works.</div>`;
+  for(const [g,list] of GROUPS){
+    h+=`<h2>${esc(g)}</h2><div class="grid">`;
+    for(const a of list){
+      const s=apps[a.id]||{}, up=!!s.up;
+      const dot=helper?`<span class="dot ${up?'up':'down'}" title="${up?'Running':'Not running'}"></span>`:'';
+      let acts='';
+      if(helper){
+        if(up&&s.url) acts+=`<a class="btn go" href="${esc(s.url)}" target="_blank" rel="noopener">Open</a>`;
+        else if(up) acts+=`<span class="btn" aria-disabled="true">Running (own window)</span>`;
+        else if(a.id!=='latch'&&a.id!=='shelf'&&a.id!=='pimesh') acts+=`<button class="btn go" data-start="${a.id}">Start</button>`;
+        if(a.id==='latch') acts+=`<a class="btn go" href="${encodeURI(a.href)}" target="_blank">Open</a>`;
+        acts+=`<a class="btn" href="${encodeURI(a.href)}" target="_blank" rel="noopener">${a.id==='shelf'?'Get it':'Details'}</a>`;
+      }
+      const wrapOpen=helper?`<div class="card">`:`<a class="card" href="${encodeURI(a.href)}" target="_blank" rel="noopener">`;
+      h+=`${wrapOpen}<div class="thumb" style="background-image:url('../thumbs/${a.img}')"></div>
+        <div class="body"><p class="name">${dot}${esc(a.name)} ${a.tag?`<span class="tag">${esc(a.tag)}</span>`:''}${a.net?' <span title="Needs the internet">📶</span>':''}</p>
+        <p class="blurb">${esc(a.blurb)}</p>${acts?`<div class="acts">${acts}</div>`:''}</div>${helper?'</div>':'</a>'}`;
+    }
+    h+='</div>';
+  }
+  $('#main').innerHTML=h;
+  document.querySelectorAll('[data-start]').forEach(b=>b.onclick=()=>start(b.dataset.start,b));
+}
+
+function renderCheck(){
+  if(!helper){$('#main').innerHTML=`<div class="note"><b>The check-up needs Server Room running on this Pi.</b><br>
+    Double-click the <b>Server Room</b> icon on the Desktop, or open a Terminal in this folder and run<br><br>
+    <code>python3 server-suite/server-room.py --open</code><br><br>
+    It looks at power, heat, drives, RAID, SSH, the firewall, updates, the clock, failed services, freeze protection and backups,
+    and tells you in plain English what to fix. It never changes anything by itself.<br><br>
+    Just looking on a PC? <code>python3 server-room.py --demo --open</code> shows it with pretend data.</div>`;return}
+  if(!checks){$('#main').innerHTML='<p class="note">Checking this Pi…</p>';return}
+  const shown=filter==='problems'?checks.filter(c=>c.status==='bad'||c.status==='warn'):checks;
+  let h=`<div class="filter"><button class="btn ${filter==='problems'?'go':''}" data-f="problems">Things to fix</button>
+    <button class="btn ${filter==='all'?'go':''}" data-f="all">Everything</button><button class="btn" id="re">↻ Check again</button></div>`;
+  if(!shown.length) h+=`<div class="note"><b>Nothing to fix - this server is in great shape.</b> Click <b>Everything</b> to see all ${checks.length} checks.</div>`;
+  let g='';
+  for(const c of shown){
+    if(c.group!==g){g=c.group;h+=`<h2>${esc(g)}</h2>`}
+    const st={ok:'Good',warn:'Should fix',bad:'Fix now',info:'Good to know'}[c.status];
+    h+=`<div class="chk ${c.status}"><div class="top"><span class="t">${esc(c.title)}</span><span class="st">${st}</span></div>
+      <p>${esc(c.detail)}</p>${c.fix?`<p class="fix">${esc(c.fix)}</p>`:''}
+      ${c.cmd?`<div class="cmd"><code>${esc(c.cmd)}</code><button class="btn" data-copy="${esc(c.cmd)}">Copy</button></div>`:''}</div>`;
+  }
+  $('#main').innerHTML=h;
+  document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{filter=b.dataset.f;renderCheck()});
+  $('#re').onclick=()=>{checks=null;renderCheck();loadChecks()};
+  document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(b.dataset.copy));
+}
+
+function copy(t){
+  const done=()=>toast('Copied. Paste it into a Terminal (Ctrl+Shift+V).');
+  if(navigator.clipboard&&window.isSecureContext) navigator.clipboard.writeText(t).then(done,()=>fallback());
+  else fallback();
+  function fallback(){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();
+    try{document.execCommand('copy');done()}catch(e){toast('Select the command and copy it.')}a.remove()}
+}
+
+function renderScore(){
+  if(!checks){$('#score').hidden=true;$('#pills').innerHTML='';return}
+  const graded=checks.filter(c=>c.status!=='info');
+  const pts=graded.reduce((s,c)=>s+(c.status==='ok'?1:c.status==='warn'?.5:0),0);
+  const pct=graded.length?Math.round(pts*100/graded.length):100;
+  const bad=checks.filter(c=>c.status==='bad').length, warn=checks.filter(c=>c.status==='warn').length;
+  const col=bad?'var(--bad)':pct>=85?'var(--ok)':'var(--warn)';
+  $('#ring').style.setProperty('--p',pct);$('#ring').style.setProperty('--c',col);$('#pct').textContent=pct+'%';
+  $('#scoreTitle').textContent=bad?'Needs attention':pct>=85?'Healthy server':'Could be safer';
+  $('#scoreSub').textContent=`${bad} to fix now · ${warn} to fix soon`;
+  $('#score').hidden=false;
+  const ok=checks.filter(c=>c.status==='ok').length;
+  $('#pills').innerHTML=`<span class="pill"><i style="background:var(--bad)"></i>${bad} fix now</span>
+    <span class="pill"><i style="background:var(--warn)"></i>${warn} should fix</span>
+    <span class="pill"><i style="background:var(--ok)"></i>${ok} good</span>${window._demo?'<span class="pill">Demo - pretend data</span>':''}`;
+}
+
+async function api(p,opt){const r=await fetch((SERVED?'':HELPER)+p,opt);if(!r.ok)throw new Error(r.status);return r.json()}
+async function loadApps(){try{apps=(await api('/api/apps')).apps;if(view==='apps')renderApps()}catch(e){}}
+async function loadChecks(){try{const d=await api('/api/checkup');checks=d.checks;window._demo=d.demo;renderScore();if(view==='check')renderCheck()}catch(e){}}
+async function start(id,btn){
+  btn.disabled=true;btn.textContent='Starting…';
+  try{const d=await api('/api/start',{method:'POST',headers:{'Content-Type':'application/json','X-Server-Room':'1'},body:JSON.stringify({id})});
+    toast(d.msg);}catch(e){toast('Could not reach Server Room.')}
+  setTimeout(loadApps,4000);setTimeout(loadApps,9000);
+}
+function setView(v){view=v;try{localStorage.setItem('serverroom.view',v)}catch(e){}
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.v===v));
+  v==='apps'?renderApps():renderCheck()}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>setView(t.dataset.v));
+addEventListener('keydown',e=>{if(e.target.matches('input,textarea'))return;
+  if(e.key==='1')setView('apps');else if(e.key==='2')setView('check');else if(e.key==='r'||e.key==='R'){loadApps();checks=null;renderCheck&&view==='check'&&renderCheck();loadChecks()}});
+
+(async function boot(){
+  if(!SERVED){
+    // opened from the folder: if Server Room is running, switch to it so the lights and check-up work
+    try{const r=await fetch(HELPER+'/api/ping',{cache:'no-store'});const d=await r.json();
+      if(d.app==='server-room'){location.replace(HELPER+'/');return}}catch(e){}
+    helper=false;
+  }
+  setView(view);
+  if(helper){loadApps();loadChecks();setInterval(loadApps,8000);setInterval(loadChecks,120000)}
+})();
+</script>
+</body>
+</html>
