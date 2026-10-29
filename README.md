@@ -21,6 +21,14 @@ A clickable menu of all my apps and games for the Pi 500, with server lights at 
 - **PiDroid Setup**: get Waydroid (Android) and Roblox running, with a fix button for every check
 - **Pi 500 games**: Fernlight Hollow, Fernlight Frostfall and Dead Mall Arena LAN Edition with Pi graphics
 
+## Pi Server Suite
+The **Server Suite** tab (key 4) and its hub, **Server Room**. The same suite is also on its own at
+[pi-server-suite](https://github.com/hardwaremack-prog/pi-server-suite), with more screenshots.
+
+![Server Suite tab](screenshots/my-apps-server-suite.png)
+![Server Room](screenshots/server-room.png)
+![Server check-up](screenshots/server-checkup.png)
+
 ## Set up
 Unzip it on the Pi and run `Set Up My Apps.sh` once (double-click, then *Execute in Terminal*).
 It puts the folder on the Desktop, adds a My Apps icon to the Desktop and menu, icons for the apps
