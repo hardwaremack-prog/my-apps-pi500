@@ -68,6 +68,30 @@ h2:first-child{margin-top:4px}
 .filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .note{background:var(--panel);border:1px dashed var(--line);border-radius:12px;padding:16px 18px;color:var(--dim);line-height:1.55}
 .note b{color:var(--ink)} .note code{background:#0a0e14;padding:2px 6px;border-radius:5px;color:#cde3d6}
+/* running servers bar */
+.srvbar{margin:12px 36px 0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.srvbar[hidden]{display:none}
+.srvhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.srvhead b{font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.srvhead .n{background:var(--panel2);border-radius:99px;padding:1px 9px;font-size:13px;font-weight:800}
+.srvhead .sp{flex:1}
+.srvlist{display:flex;flex-wrap:wrap;gap:8px}
+.sv{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:6px 6px 6px 10px;font-size:14px;max-width:100%}
+.sv .d{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);flex:0 0 9px}
+.sv .nm{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.sv .pt{color:var(--dim);font-variant-numeric:tabular-nums;font-size:12.5px}
+.sv .net{font-size:11px;font-weight:700;color:var(--dim);border:1px solid var(--line);border-radius:6px;padding:1px 5px}
+.sv .net.lan{color:var(--warn);border-color:#5a4a20}
+.sv a.o,.sv button{appearance:none;border:0;border-radius:8px;font:inherit;font-size:12.5px;font-weight:800;padding:4px 9px;cursor:pointer;text-decoration:none}
+.sv a.o{background:var(--bg);color:var(--ink)}
+.sv button.stop{background:#3a1d24;color:#ffb3bb}
+.sv button.stop.sure{background:var(--bad);color:#fff}
+.sv button:disabled{opacity:.5;cursor:default}
+.sv .lock{color:var(--dim);font-size:12px;padding:0 6px}
+.sv.remote{opacity:.75}.sv.remote .d{background:var(--info);box-shadow:0 0 8px var(--info)}
+.srvnote{color:var(--dim);font-size:12.5px;margin-top:8px}
+.btn.danger{border-color:#5b2630;color:#ffb3bb}.btn.danger.sure{background:var(--bad);border-color:var(--bad);color:#fff}
+@media (max-width:640px){.srvbar{margin:12px 16px 0}.sv{width:100%}.sv .nm{flex:1;max-width:none;min-width:0}.sv .net{white-space:nowrap}}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);color:var(--ink);
   padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
 #toast.on{opacity:1}
@@ -88,6 +112,12 @@ kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padd
   </div>
 </header>
 <div class="pills" id="pills"></div>
+<section class="srvbar" id="srvbar" hidden aria-label="Running web servers">
+  <div class="srvhead"><b>Running servers</b><span class="n" id="srvn">0</span><span class="sp"></span>
+    <button class="btn danger" id="stopall">Stop all web servers</button></div>
+  <div class="srvlist" id="srvlist"></div>
+  <div class="srvnote" id="srvnote"></div>
+</section>
 <nav role="tablist">
   <button class="tab" role="tab" data-v="apps">🧰 Suite apps</button>
   <button class="tab" role="tab" data-v="check">🩺 Server check-up</button>
@@ -144,7 +174,7 @@ let view='apps'; try{view=localStorage.getItem('serverroom.view')||'apps'}catch(
 let apps={}, checks=null, helper=SERVED, filter='problems';
 const $=s=>document.querySelector(s);
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),3200)}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),Math.max(3200,m.length*55))}
 
 function renderApps(){
   let h='';
@@ -226,6 +256,51 @@ function renderScore(){
     <span class="pill"><i style="background:var(--ok)"></i>${ok} good</span>${window._demo?'<span class="pill">Demo - pretend data</span>':''}`;
 }
 
+
+// ---------- running servers bar
+let srvData=null; const sure={};
+function armed(key,el,label,warn){
+  if(sure[key]&&Date.now()-sure[key]<4000){delete sure[key];return true}
+  sure[key]=Date.now(); el.classList.add('sure'); el.textContent=label;
+  if(warn) toast(warn);
+  setTimeout(()=>{if(sure[key]&&Date.now()-sure[key]>=3900){delete sure[key];renderServers()}},4100);
+  return false;
+}
+function renderServers(){
+  const bar=$('#srvbar'); if(!helper||!srvData){bar.hidden=true;return}
+  bar.hidden=false;
+  const L=srvData.servers||[], stoppable=L.filter(x=>x.stoppable);
+  $('#srvn').textContent=L.length;
+  $('#stopall').hidden=!stoppable.length;
+  if(!sure.all){$('#stopall').classList.remove('sure');$('#stopall').textContent='Stop all web servers ('+stoppable.length+')'}
+  let h=L.map(x=>`<div class="sv" title="${esc(x.title||'')}${x.proc?' · program: '+esc(x.proc):''}">
+      <span class="d"></span><span class="nm">${esc(x.name)}</span><span class="pt">:${x.port}</span>
+      <span class="net ${x.local_only?'':'lan'}" title="${x.local_only?'Only this Pi can open it':'Phones and PCs on your network can open it'}">${x.local_only?'this Pi':'network'}</span>
+      <a class="o" href="${esc(x.url)}" target="_blank" rel="noopener">Open</a>
+      ${x.stoppable?`<button class="stop${sure['p'+x.port]?' sure':''}" data-port="${x.port}">${sure['p'+x.port]?'Sure?':'Stop'}</button>`:`<span class="lock" title="${esc(x.why||'')}">🔒</span>`}
+    </div>`).join('');
+  h+=(srvData.remote||[]).map(r=>`<div class="sv remote" title="Remote access - switch it off in Raspberry Pi Configuration > Interfaces"><span class="d"></span><span class="nm">${esc(r.name)}</span><span class="pt">:${r.port}</span></div>`).join('');
+  $('#srvlist').innerHTML=h||'<span class="srvnote">No web servers are running.</span>';
+  const lan=L.filter(x=>!x.local_only).length;
+  $('#srvnote').textContent=L.length?`${lan} can be opened from other devices on your network (orange). Stop asks “Sure?” first. Servers that start with the Pi come back after a restart.`:'';
+  document.querySelectorAll('.sv button.stop').forEach(b=>b.onclick=async()=>{
+    const port=+b.dataset.port, x=L.find(s=>s.port===port);
+    if(!armed('p'+port,b,'Sure?',x&&x.warn)) return;
+    b.disabled=true;b.textContent='Stopping…';
+    try{const d=await api('/api/stop',{method:'POST',headers:{'Content-Type':'application/json','X-Server-Room':'1'},body:JSON.stringify({port})});toast(d.msg)}
+    catch(e){toast('Could not reach Server Room.')}
+    loadServers();loadApps();
+  });
+}
+$('#stopall').onclick=async()=>{
+  const b=$('#stopall');
+  if(!armed('all',b,'Sure? Stop them all')) return;
+  b.disabled=true;b.textContent='Stopping…';
+  try{const d=await api('/api/stopall',{method:'POST',headers:{'Content-Type':'application/json','X-Server-Room':'1'},body:'{}'});toast(d.msg)}
+  catch(e){toast('Could not reach Server Room.')}
+  b.disabled=false;loadServers();loadApps();
+};
+async function loadServers(){try{srvData=await api('/api/servers');renderServers()}catch(e){}}
 async function api(p,opt){const r=await fetch((SERVED?'':HELPER)+p,opt);if(!r.ok)throw new Error(r.status);return r.json()}
 async function loadApps(){try{apps=(await api('/api/apps')).apps;if(view==='apps')renderApps()}catch(e){}}
 async function loadChecks(){try{const d=await api('/api/checkup');checks=d.checks;window._demo=d.demo;renderScore();if(view==='check')renderCheck()}catch(e){}}
@@ -250,7 +325,7 @@ addEventListener('keydown',e=>{if(e.target.matches('input,textarea'))return;
     helper=false;
   }
   setView(view);
-  if(helper){loadApps();loadChecks();setInterval(loadApps,8000);setInterval(loadChecks,120000)}
+  if(helper){loadApps();loadChecks();loadServers();setInterval(loadApps,8000);setInterval(()=>{if(!document.hidden&&!Object.keys(sure).length)loadServers()},5000);setInterval(loadChecks,120000)}
 })();
 </script>
 </body>

@@ -1,8 +1,9 @@
 # Pi Server Suite
 
 Everything you need to run a Raspberry Pi 5 or Pi 500 as a home server, in one place.
-**Server Room** is the hub: one page with a light for every suite app and a plain-English
-**Server check-up** that tells you what to fix first.
+**Server Room** is the hub: a **Running servers** bar at the top shows every web server on the Pi
+(and whether other devices can reach it) with a **Stop** button for each, plus a light for every
+suite app and a plain-English **Server check-up** that tells you what to fix first.
 
 ![Server Room](../thumbs/server-room.jpg)
 

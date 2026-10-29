@@ -21,9 +21,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, unquote
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import servers as SRV   # running web servers: find them and stop them
 ROOT = os.path.dirname(HERE)                      # the folder that holds server-suite/ and apps/
 PORT = int(os.environ.get("SERVER_ROOM_PORT", "8410"))
-VERSION = "1.0"
+VERSION = "1.1"
 DEMO = False
 
 # ------------------------------------------------------------------ the suite's apps
@@ -51,6 +53,75 @@ APPS = [
     dict(id="pisnip", desktop="pisnip", ports=[], proc="pisnip", folder="pisnip"),
 ]
 APP_BY_ID = {a["id"]: a for a in APPS}
+
+# friendly names for the running-servers bar: (page-title pattern, usual ports, name, systemd unit)
+SERVER_NAMES = [
+    (r"raid ?watch", [8484], "RAID Watch", None), (r"poddeck", [8070], "PodDeck", "user:poddeck.service"),
+    (r"pimesh", [8470], "PiMesh", "pimesh.service"), (r"netsentry", [8775], "NetSentry", None),
+    (r"netpulse", [8790], "NetPulse", None), (r"dirstat", [8088], "PiDirStat", None),
+    (r"blueprint", [], "Blueprint Wiki", None), (r"task manager", [], "Task Manager web page", "rpi500-web.service"),
+    (r"shelf", [], "The Shelf", None), (r"tidy suite", [8780], "Tidy Suite", "user:tidy-suite.service"),
+    (r"\bpip\b", [8765], "Pip", None), (r"pironman pilot", [47821], "Pironman Pilot", "pironman-pilot.service"),
+    (r"^\s*dashboard\s*$|pironman ?5", [34001], "Pironman dashboard (SunFounder)", "pironman5.service"),
+    (r"halo studio", [8395], "Halo Studio", None), (r"pon lab", [], "PON Lab", "ponlab.service"),
+    (r"pon fleet", [], "PON Fleet", "ponfleet.service"), (r"overdrive", [8500], "Overdrive", None),
+    (r"uptime kuma", [3001], "Uptime Kuma", None), (r"frostfall", [], "Frostfall Cabins", None),
+    (r"dead mall", [], "Dead Mall Arena", None), (r"my apps", [], "My Apps", None),
+]
+SERVER_UNIT = {n: u for _, _, n, u in SERVER_NAMES if u}
+SERVER_WARN = {"Pironman dashboard (SunFounder)": "This is SunFounder's case service: stopping it also stops the case fans, LEDs and OLED until it restarts.",
+               "PiMesh": "This Pi drops out of your PiMesh dashboard until it restarts.",
+               "Pironman Pilot": "The case falls back to SunFounder's fan settings until it restarts.",
+               "Tidy Suite": "Everyone using the Tidy Suite from their phone or PC is cut off until it starts again."}
+
+
+def running_servers():
+    if DEMO:
+        return demo_servers()
+    d = SRV.scan([(rx, pp, n) for rx, pp, n, _ in SERVER_NAMES])
+    for s in d["servers"]:
+        if s["name"] in SERVER_WARN:
+            s["warn"] = SERVER_WARN[s["name"]]
+    return d
+
+
+_DEMO_SERVERS = [
+    dict(port=8070, name="PodDeck", title="PodDeck", proc="python3", local_only=False),
+    dict(port=8080, name="Blueprint Wiki", title="Blueprint Wiki", proc="python3", local_only=False),
+    dict(port=8470, name="PiMesh", title="PiMesh", proc="python3", local_only=False, warn=SERVER_WARN["PiMesh"]),
+    dict(port=8775, name="NetSentry", title="NetSentry", proc="python3", local_only=True),
+    dict(port=8780, name="Tidy Suite", title="Tidy Suite", proc="python3", local_only=False, warn=SERVER_WARN["Tidy Suite"]),
+    dict(port=3001, name="Uptime Kuma", title="Uptime Kuma", proc="rootlessport", local_only=False),
+    dict(port=8410, name="Server Room", title="Server Room", proc="python3", local_only=True, stoppable=False, why=SRV.PROTECTED[8410]),
+]
+
+
+def demo_servers():
+    out = []
+    for s in _DEMO_SERVERS:
+        s = dict(s)
+        s.setdefault("stoppable", True)
+        s.update(url="http://127.0.0.1:%d/" % s["port"], lan=None if s["local_only"] else "http://192.168.1.50:%d/" % s["port"], status=200)
+        out.append(s)
+    return {"servers": out, "remote": [dict(port=22, name="SSH"), dict(port=5900, name="VNC")], "ip": "192.168.1.50"}
+
+
+def stop_server(port):
+    if DEMO:
+        for s in _DEMO_SERVERS:
+            if s["port"] == port and s.get("stoppable", True):
+                _DEMO_SERVERS.remove(s)
+                return True, "Demo: pretended to stop %s." % s["name"]
+        return False, "That one can't be stopped from here."
+    cur = next((s for s in running_servers()["servers"] if s["port"] == port), None)
+    if not cur:
+        return False, "That server isn't running any more."
+    if not cur.get("stoppable"):
+        return False, cur.get("why") or "That one can't be stopped from here."
+    try:
+        return SRV.stop(port, cur["name"], SERVER_UNIT.get(cur["name"]))
+    except Exception as e:
+        return False, "Couldn't stop it: %s" % e
 SERVE_FOLDERS = {a["folder"] for a in APPS if a.get("folder")}
 
 
@@ -616,6 +687,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"checks": checkup(), "demo": DEMO, "at": time.time()})
         if p == "/api/apps":
             return self.send_json({"apps": demo_apps() if DEMO else app_status()})
+        if p == "/api/servers":
+            return self.send_json(running_servers())
         # a few static files: the suite folder, its icon, and the suite apps' own folders
         parts = p.strip("/").split("/")
         base = None
@@ -638,11 +711,26 @@ class Handler(BaseHTTPRequestHandler):
         if not self.local_host_ok() or self.headers.get("X-Server-Room") != "1":
             return self.send_error(403)
         u = urlparse(self.path)
-        if u.path == "/api/start":
+        try:
+            body = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 4096)) or b"{}")
+        except Exception:
+            body = {}
+        if u.path == "/api/stop":
             try:
-                body = json.loads(self.rfile.read(min(int(self.headers.get("Content-Length") or 0), 4096)) or b"{}")
+                port = int(body.get("port"))
             except Exception:
-                body = {}
+                return self.send_json({"ok": False, "msg": "Which server?"})
+            ok, msg = stop_server(port)
+            return self.send_json({"ok": ok, "msg": msg})
+        if u.path == "/api/stopall":
+            done, failed = [], []
+            for s in [x for x in running_servers()["servers"] if x.get("stoppable")]:
+                ok, msg = stop_server(s["port"])
+                (done if ok else failed).append(s["name"] if ok else "%s (%s)" % (s["name"], msg))
+            msg = ("Stopped " + ", ".join(done) + "." if done else "Nothing was stopped.") + \
+                  ((" Couldn't stop: " + "; ".join(failed)) if failed else "")
+            return self.send_json({"ok": not failed, "msg": msg, "stopped": done})
+        if u.path == "/api/start":
             if DEMO:
                 return self.send_json({"ok": True, "msg": "Demo mode - pretending to start it."})
             ok, msg = launch(str(body.get("id", "")))

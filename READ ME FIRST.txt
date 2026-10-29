@@ -61,6 +61,11 @@ WEB ACCESS (open My Apps from your phone or PC, with a password)
 PI SERVER SUITE (the Server Suite tab, key 4)
   Everything for running a Pi 5 or Pi 500 as a home server, with Server
   Room as the hub. Double-click Server Room on the Desktop (or its tile).
+  - Running servers (top of the page): every web server on this Pi, with
+    "network" (orange) when phones and PCs can open it or "this Pi" when
+    only the Pi can. Open opens it; Stop asks "Sure?" and then stops it,
+    including containers. "Stop all web servers" stops them all (never
+    Server Room itself, SSH or VNC, so you can't lock yourself out).
   - Server check-up: about 20 checks every Pi server should pass - power
     supply, heat, running from the SD card (it wears out), disk space,
     RAID health, SSH passwords, fail2ban, firewall, waiting updates,

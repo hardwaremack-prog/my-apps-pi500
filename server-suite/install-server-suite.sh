@@ -287,6 +287,27 @@ if [ -f "$PIPSRC/server.py" ]; then
   fi
 fi
 
+# Let Server Room's Stop buttons stop the suite's system services without a password each time.
+# Only stop/start/restart, only these services, only for you. Asks for your password once.
+if command -v pkaction >/dev/null 2>&1 && [ -d /etc/polkit-1/rules.d ]; then
+  RULE="/etc/polkit-1/rules.d/49-server-room-stop.rules"
+  RULETXT="// Made by install-server-suite.sh: lets $USER stop and start these services from Server Room.
+polkit.addRule(function(action, subject) {
+  if (action.id == \"org.freedesktop.systemd1.manage-units\" && subject.user == \"$USER\") {
+    var units = [\"pimesh.service\", \"rpi500-web.service\", \"pironman5.service\", \"pironman-pilot.service\",
+                 \"ponlab.service\", \"ponfleet.service\"];
+    var verbs = [\"start\", \"stop\", \"restart\"];
+    if (units.indexOf(action.lookup(\"unit\")) >= 0 && verbs.indexOf(action.lookup(\"verb\")) >= 0)
+      return polkit.Result.YES;
+  }
+});"
+  if [ "$(cat "$RULE" 2>/dev/null)" != "$RULETXT" ]; then
+    say "  Server Room's Stop buttons need your password once to stop services like PiMesh:"
+    printf '%s\n' "$RULETXT" | sudo tee "$RULE" >/dev/null && sudo chmod 644 "$RULE" \
+      || say "    Skipped. Stop still works for apps you started yourself."
+  fi
+fi
+
 # Pi OS: don't ask "Execute?" every time a launcher is double-clicked
 f="$HOME/.config/libfm/libfm.conf"
 if [ -f "$f" ] && ! grep -q '^quick_exec=1' "$f" && grep -q '^\[config\]' "$f"; then
