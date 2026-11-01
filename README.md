@@ -6,14 +6,16 @@ A clickable menu of all my apps and games for the Pi 500, with server lights at 
 
 - **Games**, **Apps**, the **Tidy Suite** and the new **Server Suite** as big tiles (arrow keys, Enter, `/` to search)
 - **Server lights**: this Pi's temperature, CPU, memory, storage and power, plus a green/red light
-  for every server (SSH, VNC, The Shelf, PiMesh, PodDeck, Blueprint Wiki, NetPulse, Pip, ...)
+  for every server (SSH, VNC, The Shelf, PiMesh, PodDeck, PiPortal, Blueprint Wiki, NetPulse, Pip, ...)
 - **Web access**: one switch opens My Apps to your phone and PCs on port 8400, behind a password (off until you turn it on)
 - **Stop buttons**: shut down any running web server one at a time (click, then confirm)
 - **Pi Server Suite** (new): everything for running a Pi 5 or Pi 500 as a home server, with **Server Room** as its hub:
   a plain-English server check-up (power, heat, SD card wear, disk space, RAID, SSH, firewall, updates, backups...) that
   shows what to fix first with a command to copy, plus a light and Start button for RAID Forge, PodDeck, PiMesh, NetSentry,
-  NetPulse, PiDirStat, WiFi Share, the Task Manager, PiStartup, VNC Turbo, Pironman Pilot, the Tidy Suite server
+  NetPulse, PiDirStat, WiFi Share, the Task Manager, PiStartup, VNC Turbo, PiPortal, Pironman Pilot, the Tidy Suite server
   (the whole house uses the Tidy Suite from the Pi), Blueprint Wiki, Latch, Pip and PiSnip. See [server-suite/README.md](server-suite/README.md)
+- **PiPortal** (new): the Pi's desktop *with sound* in any browser on your PC, phone or tablet (VNC has none), plus stats,
+  processes, services, a terminal and files. Port 6090. Also on its own at [piportal](https://github.com/hardwaremack-prog/piportal)
 - **RPi500+ Task Manager**: Windows-style Task Manager (Ctrl+Shift+Esc) with an Update everything button
 - **Pip**: offline voice assistant for your headset
 - **Overdrive**: show off every part of the Pi 500 and get a score

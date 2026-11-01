@@ -49,6 +49,7 @@ APPS = [
     dict(id="pilot", desktop="pironman-pilot", ports=[47821, 47822, 47823, 47824], title=r"pironman pilot",
          unit="pironman-pilot.service", folder="pironman-pilot", needs="pironman"),
     dict(id="vncturbo", desktop="vnc-turbo", ports=[], proc="vnc_turbo.py", folder="vnc-turbo"),
+    dict(id="piportal", desktop="piportal", ports=[6090, 6091, 6092], title=r"piportal", unit="piportal.service", folder="piportal"),
     dict(id="pistartup", desktop="pistartup", ports=[], proc="pistartup.py", folder="pistartup"),
     dict(id="pisnip", desktop="pisnip", ports=[], proc="pisnip", folder="pisnip"),
 ]
@@ -61,7 +62,7 @@ SERVER_NAMES = [
     (r"netpulse", [8790], "NetPulse", None), (r"dirstat", [8088], "PiDirStat", None),
     (r"blueprint", [], "Blueprint Wiki", None), (r"task manager", [], "Task Manager web page", "rpi500-web.service"),
     (r"shelf", [], "The Shelf", None), (r"tidy suite", [8780], "Tidy Suite", "user:tidy-suite.service"),
-    (r"\bpip\b", [8765], "Pip", None), (r"pironman pilot", [47821], "Pironman Pilot", "pironman-pilot.service"),
+    (r"\bpip\b", [8765], "Pip", None), (r"piportal", [6090], "PiPortal", "piportal.service"), (r"pironman pilot", [47821], "Pironman Pilot", "pironman-pilot.service"),
     (r"^\s*dashboard\s*$|pironman ?5", [34001], "Pironman dashboard (SunFounder)", "pironman5.service"),
     (r"halo studio", [8395], "Halo Studio", None), (r"pon lab", [], "PON Lab", "ponlab.service"),
     (r"pon fleet", [], "PON Fleet", "ponfleet.service"), (r"overdrive", [8500], "Overdrive", None),

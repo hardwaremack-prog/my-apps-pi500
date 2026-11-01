@@ -23,6 +23,7 @@ suite app and a plain-English **Server check-up** that tells you what to fix fir
 | 📘 | **Blueprint Wiki** | Document your server: pages, checklists, PDFs, network maps. |
 | 🔐 | **Latch** | Offline password safe for your server, router and container passwords. |
 | 🚀 | **PiStartup** | Everything that starts with the Pi, with boot times; switch off what a server doesn't need. |
+| 🔊 | **PiPortal** | The Pi's desktop *with sound* in any browser (VNC has none), plus stats, processes, services, terminal and files. Port 6090. |
 | ⚡ | **VNC Turbo** | Makes remote desktop fast again: finds the cause and fixes it with one click, all undoable. |
 | 🌀 | **Pironman Pilot** | Only on a Pi 5 in a SunFounder Pironman 5 MAX case: OLED, quiet fan curves, side-fan speed control, lights, safe overclocking. |
 | 🗂️ | **Tidy Suite** | Hosts the whole Tidy Suite for everyone on your Wi-Fi (port 8780); each person's work is saved on the Pi. |

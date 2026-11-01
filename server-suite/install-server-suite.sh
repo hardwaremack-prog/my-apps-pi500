@@ -259,6 +259,16 @@ if [ -f "$VT/vnc_turbo.py" ] && ask "  VNC Turbo - make remote desktop fast agai
   [ -n "$NEED_TK" ] && { sudo apt-get install -y python3-tk >/dev/null && NEED_TK=""; } || true
 fi
 
+# PiPortal - the desktop with sound in any browser (its own installer asks for a password)
+PO="$APPS/piportal"
+if [ -f "$PO/server.py" ] && ask "  PiPortal - see and hear this Pi from any browser, and manage it? [Y/n] " y; then
+  chmod +x "$PO"/*.sh "$PO/server.py" 2>/dev/null || true
+  launcher "piportal" "PiPortal" "See and hear this Pi from any browser" "bash \"$PO/start-piportal.sh\"" "$PO" "$PO/piportal-icon.png" true "System;Network;"
+  if ask "    Install PiPortal and start it with the Pi now? [Y/n] " y; then
+    bash "$PO/install.sh" || say "    Note: PiPortal didn't finish. Try:  bash \"$PO/install.sh\""
+  fi
+fi
+
 # Pironman Pilot - only on a Pi in a SunFounder Pironman 5 MAX case (installs a root service, so it always asks)
 PP="$APPS/pironman-pilot"
 if [ -f "$PP/pilot.py" ] && { command -v pironman5 >/dev/null 2>&1 || systemctl list-unit-files 2>/dev/null | grep -q '^pironman5'; }; then
